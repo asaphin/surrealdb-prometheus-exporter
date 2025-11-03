@@ -1,0 +1,13 @@
+surrealdb:
+  uri: ws://192.168.1.161
+  username: root
+  password: SecurePassword123!
+  namespace: test
+  database: loadtest
+  timeout: 30s
+
+collectors:
+  server_info:
+    enabled: true
+  metrics_demo:
+    enabled: true
