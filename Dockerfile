@@ -16,6 +16,6 @@ WORKDIR /root/
 
 COPY --from=builder /app/exporter .
 
-EXPOSE 9156
+EXPOSE 9224
 
 ENTRYPOINT ["./surrealdb_exporter"]

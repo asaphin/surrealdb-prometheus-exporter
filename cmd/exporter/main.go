@@ -15,7 +15,7 @@ import (
 
 var (
 	configFile      = flag.String("config.file", "./config.yaml", "Path to configuration file")
-	listenAddress   = flag.String("web.listen-address", ":9156", "Address to listen on")
+	listenAddress   = flag.String("web.listen-address", ":9224", "Address to listen on")
 	metricsPath     = flag.String("web.telemetry-path", "/metrics", "Path for metrics")
 	enableGoMetrics = flag.Bool("web.enable-go-metrics", false, "Enable Go runtime metrics")
 )
