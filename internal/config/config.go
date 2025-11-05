@@ -9,8 +9,14 @@ import (
 )
 
 type Config struct {
+	Exporter   ExporterConfig   `yaml:"exporter"`
 	SurrealDB  SurrealDBConfig  `yaml:"surrealdb"`
 	Collectors CollectorsConfig `yaml:"collectors"`
+}
+
+type ExporterConfig struct {
+	Port        int    `yaml:"port"`
+	MetricsPath string `yaml:"metrics_path"`
 }
 
 type SurrealDBConfig struct {
@@ -25,6 +31,8 @@ type SurrealDBConfig struct {
 type CollectorsConfig struct {
 	ServerInfo  CollectorConfig `yaml:"server_info"`
 	MetricsDemo CollectorConfig `yaml:"metrics_demo"`
+	Go          CollectorConfig `yaml:"go"`
+	Process     CollectorConfig `yaml:"process"`
 }
 
 type CollectorConfig struct {
@@ -52,17 +60,23 @@ func Load(path string) (*Config, error) {
 
 func defaultConfig() *Config {
 	return &Config{
+		Exporter: ExporterConfig{
+			Port:        9224,
+			MetricsPath: "/metrics",
+		},
 		SurrealDB: SurrealDBConfig{
 			URI:       "ws://localhost:8000",
 			Username:  "root",
 			Password:  "root",
 			Namespace: "test",
 			Database:  "test",
-			Timeout:   30 * time.Second,
+			Timeout:   10 * time.Second,
 		},
 		Collectors: CollectorsConfig{
 			ServerInfo:  CollectorConfig{Enabled: true},
 			MetricsDemo: CollectorConfig{Enabled: true},
+			Go:          CollectorConfig{Enabled: false},
+			Process:     CollectorConfig{Enabled: false},
 		},
 	}
 }

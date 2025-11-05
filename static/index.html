@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>SurrealDB Exporter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg: #050816;
+            --bg-alt: #080b1a;
+            --card-bg: rgba(15, 23, 42, 0.95);
+            --border-subtle: rgba(148, 163, 184, 0.35);
+            --accent: #ff4ecd;
+            --accent-soft: rgba(255, 78, 205, 0.16);
+            --accent-glow: rgba(255, 78, 205, 0.5);
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-soft: #6b7280;
+            --metrics-pill-bg: rgba(15, 23, 42, 0.8);
+            --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.9);
+            --radius-lg: 1.25rem;
+            --radius-pill: 999px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                    radial-gradient(circle at top left, #1e293b 0, transparent 55%),
+                    radial-gradient(circle at bottom right, #4c1d95 0, transparent 55%),
+                    var(--bg);
+            color: var(--text-main);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 960px;
+            width: 100%;
+            background: linear-gradient(
+                    135deg,
+                    rgba(15, 23, 42, 0.98),
+                    rgba(15, 23, 42, 0.88)
+            );
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-subtle);
+            padding: 2.5rem 2.25rem 2rem;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: "";
+            position: absolute;
+            inset: -30%;
+            background:
+                    radial-gradient(circle at top right, var(--accent-glow), transparent 60%),
+                    radial-gradient(circle at bottom left, #22d3ee55, transparent 60%);
+            opacity: 0.6;
+            mix-blend-mode: screen;
+            pointer-events: none;
+        }
+
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.75rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .logo-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.35rem 0.9rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            border: 1px solid rgba(248, 250, 252, 0.08);
+            background: radial-gradient(circle at top left, #111827, #020617);
+            color: var(--text-muted);
+        }
+
+        .logo-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, #f9fafb, var(--accent));
+            box-shadow: 0 0 18px var(--accent-glow);
+        }
+
+        h1 {
+            font-size: clamp(1.9rem, 2.6vw, 2.35rem);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        h1 span.highlight {
+            background: linear-gradient(120deg, #f97316, var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            max-width: 520px;
+            line-height: 1.5;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1rem 0 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1.2rem;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--accent);
+            background: radial-gradient(circle at top left, var(--accent-soft), #111827);
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 0 24px rgba(255, 78, 205, 0.4);
+            transition:
+                    transform 0.12s ease-out,
+                    box-shadow 0.12s ease-out,
+                    background 0.12s ease-out;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 32px rgba(255, 78, 205, 0.6);
+            background: radial-gradient(circle at top left, rgba(255, 78, 205, 0.32), #020617);
+        }
+
+        .btn-primary span.icon {
+            font-size: 1rem;
+        }
+
+        .small-note {
+            font-size: 0.78rem;
+            color: var(--text-soft);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+            gap: 1.8rem;
+            align-items: flex-start;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.9rem 1.5rem 1.6rem;
+            }
+            .title-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .panel {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.92));
+            border-radius: 1rem;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            padding: 1.3rem 1.25rem 1.1rem;
+            backdrop-filter: blur(12px);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .panel-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            color: var(--text-muted);
+        }
+
+        .panel-badge {
+            font-size: 0.78rem;
+            color: var(--text-soft);
+        }
+
+        .metrics-pill {
+            margin-top: 0.5rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.75rem;
+            background: var(--metrics-pill-bg);
+            border: 1px solid rgba(55, 65, 81, 0.8);
+            font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .metrics-pill .path {
+            color: #a5b4fc;
+            word-break: break-all;
+        }
+
+        .metrics-pill .hint {
+            font-size: 0.74rem;
+            opacity: 0.8;
+        }
+
+        .metrics-pill .endpoint-dot {
+            width: 0.4rem;
+            height: 0.4rem;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+        }
+
+        .collectors-list {
+            list-style: none;
+            margin-top: 0.85rem;
+            padding: 0.5rem 0 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.45rem 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .collectors-list li {
+            position: relative;
+            padding-left: 1.1rem;
+        }
+
+        .collectors-list li::before {
+            content: "";
+            position: absolute;
+            left: 0.25rem;
+            top: 0.55em;
+            width: 0.35rem;
+            height: 0.35rem;
+            border-radius: 999px;
+            background: radial-gradient(circle at 30% 30%, #f9fafb, #22d3ee);
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+        }
+
+        .footer-note {
+            margin-top: 1.6rem;
+            font-size: 0.78rem;
+            color: var(--text-soft);
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-note span strong {
+            color: #e5e7eb;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+<main class="container">
+    <div class="content">
+        <div class="title-row">
+            <div>
+                <div class="logo-pill">
+                    <span class="logo-dot"></span>
+                    <span>SurrealDB Exporter</span>
+                </div>
+                <h1>
+                    Metrics for your
+                    <span class="highlight">SurrealDB</span>
+                    instance
+                </h1>
+            </div>
+            <p class="subtitle">
+                A Prometheus exporter surface for SurrealDB.
+                Inspect core runtime metrics, verify enabled collectors, and plug into
+                your existing observability stack.
+            </p>
+        </div>
+
+        <div class="actions">
+            <a class="btn-primary" href="{{ .MetricsPath }}">
+                <span class="icon">➜</span>
+                <span>Open metrics endpoint</span>
+            </a>
+            <span class="small-note">
+          Scrape this endpoint from Prometheus to collect SurrealDB exporter metrics.
+        </span>
+        </div>
+
+        <div class="layout">
+            <section class="panel">
+                <header class="panel-header">
+                    <h2 class="panel-title">Exporter endpoint</h2>
+                    <span class="panel-badge">HTTP metrics</span>
+                </header>
+                <div class="metrics-pill">
+                    <div class="path">{{ .MetricsPath }}</div>
+                    <div class="hint">
+                        <div class="endpoint-dot"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <header class="panel-header">
+                    <h2 class="panel-title">Enabled collectors</h2>
+                    <span class="panel-badge">Runtime + custom</span>
+                </header>
+                <ul class="collectors-list">
+                    {{ .EnabledCollectorsHTML }}
+                </ul>
+            </section>
+        </div>
+
+        <footer class="footer-note">
+        <span>
+          <strong>Hint:</strong> Expose this exporter alongside SurrealDB and point
+          Prometheus to the metrics endpoint.
+        </span>
+            <span>
+          Built for multi-model workloads and modern observability pipelines.
+        </span>
+        </footer>
+    </div>
+</main>
+</body>
+</html>

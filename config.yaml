@@ -1,13 +1,21 @@
+exporter:
+  port: 9224
+  metrics_path: /metrics
+
 surrealdb:
   uri: ws://192.168.1.161
   username: root
   password: SecurePassword123!
   namespace: test
   database: loadtest
-  timeout: 30s
+  timeout: 10s
 
 collectors:
   server_info:
-    enabled: true
+    enabled: false
   metrics_demo:
-    enabled: true
+    enabled: false
+  go:
+    enabled: false
+  process:
+    enabled: false

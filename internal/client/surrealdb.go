@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/asaphin/surrealdb-prometheus-exporter/internal/config"
 )
 
 type Client interface {
@@ -28,14 +30,14 @@ type surrealDBClient struct {
 	timeout   time.Duration
 }
 
-func New(uri, username, password, namespace, database string, timeout time.Duration) (Client, error) {
+func New(cfg *config.Config) (Client, error) {
 	client := &surrealDBClient{
-		uri:       uri,
-		username:  username,
-		password:  password,
-		namespace: namespace,
-		database:  database,
-		timeout:   timeout,
+		uri:       cfg.SurrealDB.URI,
+		username:  cfg.SurrealDB.Username,
+		password:  cfg.SurrealDB.Password,
+		namespace: cfg.SurrealDB.Namespace,
+		database:  cfg.SurrealDB.Database,
+		timeout:   cfg.SurrealDB.Timeout,
 	}
 
 	return client, nil
