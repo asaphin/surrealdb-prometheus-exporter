@@ -19,3 +19,7 @@ collectors:
     enabled: false
   process:
     enabled: false
+
+logging:
+  format: json
+  level: debug

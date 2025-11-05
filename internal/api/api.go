@@ -18,7 +18,7 @@ type PageData struct {
 	EnabledCollectorsHTML template.HTML
 }
 
-func StartServer(logger *slog.Logger, cfg *config.Config, registry *prometheus.Registry) error {
+func StartServer(cfg *config.Config, registry *prometheus.Registry) error {
 	indexTmpl, err := template.ParseFS(static.Files, "index.html")
 	if err != nil {
 		log.Printf("unable to parse templates: %v", err)
@@ -29,7 +29,7 @@ func StartServer(logger *slog.Logger, cfg *config.Config, registry *prometheus.R
 
 	mux.Handle(cfg.Exporter.MetricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 		ErrorHandling: promhttp.ContinueOnError,
-		ErrorLog:      slog.NewLogLogger(logger.Handler(), slog.LevelError),
+		ErrorLog:      slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}))
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func StartServer(logger *slog.Logger, cfg *config.Config, registry *prometheus.R
 
 	listenAddress := fmt.Sprintf(":%d", cfg.Exporter.Port)
 
-	logger.Info("Starting SurrealDB Exporter",
+	slog.Info("Starting SurrealDB Exporter",
 		"address", listenAddress,
 		"metrics_path", cfg.Exporter.MetricsPath,
 		"enabled_collectors", 1,

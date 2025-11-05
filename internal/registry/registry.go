@@ -1,8 +1,6 @@
 package registry
 
 import (
-	"log/slog"
-
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/client"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/config"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/surrealcollectors"
@@ -10,13 +8,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
-func New(logger *slog.Logger, cfg *config.Config, cl client.Client) (*prometheus.Registry, error) {
+func New(cfg *config.Config, cl client.Client) (*prometheus.Registry, error) {
 	registry := prometheus.NewRegistry()
 
 	registry.MustRegister(
-		surrealcollectors.NewServerInfoCollector(logger, cl),
-		//surrealcollectors.NewMetricsDemoCollector(logger),
-		//surrealcollectors.NewUpCollector(logger, cl),
+		surrealcollectors.NewServerInfoCollector(cl),
+		//surrealcollectors.NewMetricsDemoCollector(,
+		//surrealcollectors.NewUpCollector(cl),
 	)
 
 	if cfg.Collectors.Go.Enabled {

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -12,6 +13,7 @@ type Config struct {
 	Exporter   ExporterConfig   `yaml:"exporter"`
 	SurrealDB  SurrealDBConfig  `yaml:"surrealdb"`
 	Collectors CollectorsConfig `yaml:"collectors"`
+	Logging    LoggingConfig    `yaml:"logging"`
 }
 
 type ExporterConfig struct {
@@ -37,6 +39,11 @@ type CollectorsConfig struct {
 
 type CollectorConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+type LoggingConfig struct {
+	Format string `yaml:"format"`
+	Level  string `yaml:"level"`
 }
 
 func Load(path string) (*Config, error) {
@@ -97,4 +104,12 @@ func applyEnvironmentOverrides(cfg *Config) {
 	if database := os.Getenv("SURREALDB_DATABASE"); database != "" {
 		cfg.SurrealDB.Database = database
 	}
+}
+
+func (c *Config) Format() string {
+	return strings.ToLower(c.Logging.Format)
+}
+
+func (c *Config) Level() string {
+	return strings.ToLower(c.Logging.Level)
 }
