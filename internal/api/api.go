@@ -7,18 +7,22 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/asaphin/surrealdb-prometheus-exporter/internal/config"
 	"github.com/asaphin/surrealdb-prometheus-exporter/static"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+type Config interface {
+	Port() int
+	MetricsPath() string
+}
 
 type PageData struct {
 	MetricsPath           string
 	EnabledCollectorsHTML template.HTML
 }
 
-func StartServer(cfg *config.Config, registry *prometheus.Registry) error {
+func StartServer(cfg Config, registry *prometheus.Registry) error {
 	indexTmpl, err := template.ParseFS(static.Files, "index.html")
 	if err != nil {
 		log.Printf("unable to parse templates: %v", err)
@@ -27,7 +31,7 @@ func StartServer(cfg *config.Config, registry *prometheus.Registry) error {
 
 	mux := http.NewServeMux()
 
-	mux.Handle(cfg.Exporter.MetricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+	mux.Handle(cfg.MetricsPath(), promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 		ErrorHandling: promhttp.ContinueOnError,
 		ErrorLog:      slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}))
@@ -36,22 +40,22 @@ func StartServer(cfg *config.Config, registry *prometheus.Registry) error {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 		data := PageData{
-			MetricsPath:           cfg.Exporter.MetricsPath,
+			MetricsPath:           cfg.MetricsPath(),
 			EnabledCollectorsHTML: template.HTML(`<li>Go</li>`),
 		}
 
-		if err := indexTmpl.Execute(w, data); err != nil {
+		if err = indexTmpl.Execute(w, data); err != nil {
 			http.Error(w, "template render error", http.StatusInternalServerError)
 			log.Printf("index template error: %v", err)
 			return
 		}
 	})
 
-	listenAddress := fmt.Sprintf(":%d", cfg.Exporter.Port)
+	listenAddress := fmt.Sprintf(":%d", cfg.Port())
 
-	slog.Info("Starting SurrealDB Exporter",
+	slog.Info("Starting SurrealDB exporter",
 		"address", listenAddress,
-		"metrics_path", cfg.Exporter.MetricsPath,
+		"metrics_path", cfg.MetricsPath(),
 		"enabled_collectors", 1,
 	)
 

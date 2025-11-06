@@ -8,6 +8,7 @@ import (
 type Config interface {
 	Format() string
 	Level() string
+	CustomAttributes() map[string]any
 }
 
 var logLevelMap = map[string]slog.Level{
@@ -35,6 +36,14 @@ func Configure(cfg Config) {
 	}
 
 	logger := slog.New(handler)
+
+	//attrs := make([]slog.Attr, 0)
+	//
+	//for key, value := range cfg.CustomAttributes() {
+	//	attrs = append(attrs, slog.Any(key, value))
+	//}
+	//
+	//logger = logger.With(attrs) // TODO update because of !BADKEY
 
 	slog.SetDefault(logger)
 }

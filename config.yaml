@@ -23,3 +23,5 @@ collectors:
 logging:
   format: json
   level: debug
+  custom_attributes:
+    application: surrealdb-prometheus-exporter
