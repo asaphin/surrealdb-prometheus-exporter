@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log/slog"
 	"os"
@@ -18,7 +17,7 @@ var configFile = flag.String("config.file", "./config.yaml", "Path to configurat
 func main() {
 	flag.Parse()
 
-	ctx := context.Background()
+	//ctx := context.Background()
 
 	cfg, err := config.Load(*configFile)
 	if err != nil {
@@ -28,13 +27,15 @@ func main() {
 
 	logger.Configure(cfg)
 
-	db, err := surrealdb.NewConnection(ctx, cfg)
-	if err != nil {
-		slog.Error("Failed to create surrealdb", "error", err)
-		os.Exit(1)
+	var dbConnManager surrealdb.ConnectionManager
+
+	if cfg.SurrealConnectionPool() {
+		dbConnManager = surrealdb.NewMultiConnectionManager(cfg)
+	} else if !cfg.SurrealConnectionPool() {
+		dbConnManager = surrealdb.NewSingleConnectionManager(cfg)
 	}
 
-	metricsReader, err := surrealdb.NewMetricsReader(db)
+	metricsReader, err := surrealdb.NewMetricsReader(dbConnManager)
 	if err != nil {
 		slog.Error("Failed to create surrealdb metrics reader", "error", err)
 	}

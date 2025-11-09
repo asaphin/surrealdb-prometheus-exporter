@@ -10,19 +10,24 @@ import (
 )
 
 type metricsReader struct {
-	db *sdk.DB
+	conn ConnectionManager
 }
 
-func NewMetricsReader(db *sdk.DB) (*metricsReader, error) {
-	if db == nil {
-		return nil, errors.New("db argument cannot be nil")
+func NewMetricsReader(conn ConnectionManager) (*metricsReader, error) {
+	if conn == nil {
+		return nil, errors.New("conn argument cannot be nil")
 	}
 
-	return &metricsReader{db: db}, nil
+	return &metricsReader{conn: conn}, nil
 }
 
 func (r *metricsReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error) {
-	results, err := sdk.Query[*domain.SurrealDBInfo](ctx, r.db, "INFO FOR ROOT", nil)
+	db, err := r.conn.Get(ctx, "", "")
+	if err != nil {
+		return nil, fmt.Errorf("could not get DB connection from connection manager: %w", err)
+	}
+
+	results, err := sdk.Query[*domain.SurrealDBInfo](ctx, db, "INFO FOR ROOT", nil)
 	if err != nil {
 		return nil, fmt.Errorf("INFO FOR DB query failed: %w", err)
 	}
@@ -31,5 +36,15 @@ func (r *metricsReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error)
 		return nil, fmt.Errorf("INFO FOR DB returned no results")
 	}
 
-	return (*results)[0].Result, nil
+	rootInfoResult := (*results)[0]
+
+	if rootInfoResult.Status != "OK" {
+		return nil, fmt.Errorf("INFO FOR DB returned %s status: %w", rootInfoResult.Status, rootInfoResult.Error)
+	}
+
+	rootInfo := rootInfoResult.Result
+
+	_ = rootInfo.ListNamespaces()
+
+	return rootInfo, nil
 }

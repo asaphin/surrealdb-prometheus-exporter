@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -25,12 +26,13 @@ type exporterConfig struct {
 }
 
 type surrealDBConfig struct {
-	URI       string        `yaml:"uri"`
-	Username  string        `yaml:"username"`
-	Password  string        `yaml:"password"`
-	Namespace string        `yaml:"namespace"`
-	Database  string        `yaml:"database"`
-	Timeout   time.Duration `yaml:"timeout"`
+	Scheme         string        `yaml:"scheme"`
+	Host           string        `yaml:"host"`
+	Port           string        `yaml:"port"`
+	Username       string        `yaml:"username"`
+	Password       string        `yaml:"password"`
+	ConnectionPool bool          `yaml:"connection_pool"`
+	Timeout        time.Duration `yaml:"timeout"`
 }
 
 type collectorsConfig struct {
@@ -79,12 +81,12 @@ func defaultConfig() *config {
 			MetricsPath: "/metrics",
 		},
 		SurrealDB: surrealDBConfig{
-			URI:       "ws://localhost:8000",
-			Username:  "root",
-			Password:  "root",
-			Namespace: "test",
-			Database:  "test",
-			Timeout:   10 * time.Second,
+			Scheme:   "ws",
+			Host:     "localhost",
+			Port:     "8000",
+			Username: "root",
+			Password: "root",
+			Timeout:  10 * time.Second,
 		},
 		Collectors: collectorsConfig{
 			ServerInfo:  collectorConfig{Enabled: true},
@@ -97,19 +99,19 @@ func defaultConfig() *config {
 
 func applyEnvironmentOverrides(cfg *config) {
 	if uri := os.Getenv("SURREALDB_URI"); uri != "" {
-		cfg.SurrealDB.URI = uri
+		parsed, err := url.Parse(uri)
+		if err == nil {
+			cfg.SurrealDB.Scheme = parsed.Scheme
+			cfg.SurrealDB.Host = parsed.Host
+			cfg.SurrealDB.Port = parsed.Port()
+		}
+
 	}
 	if username := os.Getenv("SURREALDB_USERNAME"); username != "" {
 		cfg.SurrealDB.Username = username
 	}
 	if password := os.Getenv("SURREALDB_PASSWORD"); password != "" {
 		cfg.SurrealDB.Password = password
-	}
-	if namespace := os.Getenv("SURREALDB_NAMESPACE"); namespace != "" {
-		cfg.SurrealDB.Namespace = namespace
-	}
-	if database := os.Getenv("SURREALDB_DATABASE"); database != "" {
-		cfg.SurrealDB.Database = database
 	}
 }
 
@@ -124,15 +126,13 @@ func (c *config) MetricsPath() string {
 }
 
 func (c *config) SurrealURL() string {
-	return c.SurrealDB.URI
-}
+	u := fmt.Sprintf("%s://%s", c.SurrealDB.Scheme, c.SurrealDB.Host)
 
-func (c *config) SurrealNamespace() string {
-	return c.SurrealDB.Namespace
-}
+	if c.SurrealDB.Port != "" {
+		u = u + ":" + c.SurrealDB.Port
+	}
 
-func (c *config) SurrealDatabase() string {
-	return c.SurrealDB.Database
+	return u
 }
 
 func (c *config) SurrealUsername() string {
@@ -141,6 +141,10 @@ func (c *config) SurrealUsername() string {
 
 func (c *config) SurrealPassword() string {
 	return c.SurrealDB.Password
+}
+
+func (c *config) SurrealConnectionPool() bool {
+	return c.SurrealDB.ConnectionPool
 }
 
 func (c *config) SurrealTimeout() time.Duration {
