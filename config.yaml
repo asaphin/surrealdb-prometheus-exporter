@@ -14,8 +14,6 @@ surrealdb:
 collectors:
   server_info:
     enabled: false
-  metrics_demo:
-    enabled: false
   go:
     enabled: false
   process:

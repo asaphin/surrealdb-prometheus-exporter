@@ -21,13 +21,13 @@ func NewMetricsReader(conn ConnectionManager) (*metricsReader, error) {
 	return &metricsReader{conn: conn}, nil
 }
 
-func (r *metricsReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error) {
+func (r *metricsReader) Info(ctx context.Context) (*domain.SurrealDBRootInfo, error) {
 	db, err := r.conn.Get(ctx, "", "")
 	if err != nil {
 		return nil, fmt.Errorf("could not get DB connection from connection manager: %w", err)
 	}
 
-	results, err := sdk.Query[*domain.SurrealDBInfo](ctx, db, "INFO FOR ROOT", nil)
+	results, err := sdk.Query[*domain.SurrealDBRootInfo](ctx, db, "INFO FOR ROOT", nil)
 	if err != nil {
 		return nil, fmt.Errorf("INFO FOR DB query failed: %w", err)
 	}
@@ -44,7 +44,9 @@ func (r *metricsReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error)
 
 	rootInfo := rootInfoResult.Result
 
-	_ = rootInfo.ListNamespaces()
+	lns := rootInfo.ListNamespaces()
+
+	_ = lns
 
 	return rootInfo, nil
 }

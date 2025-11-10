@@ -1,24 +1,14 @@
 package domain
 
-type Scope [2]string
-
-func NewScope(ns, db string) Scope {
-	return Scope{ns, db}
-}
-
-func (s Scope) String() string {
-	return s[0] + ":" + s[1]
-}
-
-func (s Scope) Namespace() string {
-	return s[0]
-}
-
-func (s Scope) Database() string {
-	return s[1]
-}
-
 type SurrealDBInfo struct {
+	Root       SurrealDBRootInfo        `json:"root"`
+	Namespaces []SurrealDBNamespaceInfo `json:"namespaces"`
+	Databases  []SurrealDBDatabaseInfo  `json:"databases"`
+	Tables     []SurrealDBTableInfo     `json:"tables"`
+	Indexes    []SurrealDBIndexInfo     `json:"indexes"`
+}
+
+type SurrealDBRootInfo struct {
 	Accesses   map[string]interface{} `json:"accesses"`
 	Namespaces map[string]interface{} `json:"namespaces"`
 
@@ -37,11 +27,46 @@ type SurrealDBSystemInfo struct {
 	Threads              int       `json:"threads"`
 }
 
-func (s *SurrealDBInfo) AvailableParallelism() float64 {
+type SurrealDBNamespaceInfo struct {
+	Accesses  map[string]interface{} `json:"accesses"`
+	Databases map[string]interface{} `json:"databases"`
+	Users     map[string]interface{} `json:"users"`
+}
+
+type SurrealDBDatabaseInfo struct {
+	Accesses  map[string]interface{} `json:"accesses"`
+	Analyzers map[string]interface{} `json:"analyzers"`
+	Apis      map[string]interface{} `json:"apis"`
+	Configs   map[string]interface{} `json:"configs"`
+	Functions map[string]interface{} `json:"functions"`
+	Models    map[string]interface{} `json:"models"`
+	Params    map[string]interface{} `json:"params"`
+	Tables    map[string]interface{} `json:"tables"`
+	Users     map[string]interface{} `json:"users"`
+}
+
+type SurrealDBTableInfo struct {
+	Events  map[string]interface{} `json:"events"`
+	Fields  map[string]interface{} `json:"fields"`
+	Indexes map[string]interface{} `json:"indexes"`
+	Lives   map[string]interface{} `json:"lives"`
+	Tables  map[string]interface{} `json:"tables"`
+}
+
+type SurrealDBIndexInfo struct {
+	Building struct {
+		Initial int    `json:"initial"`
+		Pending int    `json:"pending"`
+		Status  string `json:"status"`
+		Updated int    `json:"updated"`
+	} `json:"building"`
+}
+
+func (s *SurrealDBRootInfo) AvailableParallelism() float64 {
 	return float64(s.System.AvailableParallelism)
 }
 
-func (s *SurrealDBInfo) ListNamespaces() []string {
+func (s *SurrealDBRootInfo) ListNamespaces() []string {
 	l := make([]string, 0, len(s.Namespaces))
 
 	for k := range s.Namespaces {
