@@ -7,18 +7,20 @@ import (
 )
 
 type Config interface {
+	surrealcollectors.Config
+	InfoCollectorEnabled() bool
 	GoCollectorEnabled() bool
 	ProcessCollectorEnabled() bool
 }
 
-func New(cfg Config, metricsReader surrealcollectors.MetricsReader) (*prometheus.Registry, error) {
+func New(cfg Config, versionReader surrealcollectors.VersionReader, metricsReader surrealcollectors.InfoMetricsReader) (*prometheus.Registry, error) {
 	registry := prometheus.NewRegistry()
 
-	registry.MustRegister(
-		surrealcollectors.NewServerInfoCollector(metricsReader),
-		//surrealcollectors.NewMetricsDemoCollector(,
-		//surrealcollectors.NewUpCollector(cl),
-	)
+	if cfg.InfoCollectorEnabled() {
+		registry.MustRegister(
+			surrealcollectors.NewInfoCollector(cfg, versionReader, metricsReader),
+		)
+	}
 
 	if cfg.GoCollectorEnabled() {
 		registry.MustRegister(collectors.NewBuildInfoCollector())

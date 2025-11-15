@@ -35,12 +35,19 @@ func main() {
 		dbConnManager = surrealdb.NewSingleConnectionManager(cfg)
 	}
 
-	metricsReader, err := surrealdb.NewMetricsReader(dbConnManager)
+	versionReader, err := surrealdb.NewVersionReader(dbConnManager)
 	if err != nil {
-		slog.Error("Failed to create surrealdb metrics reader", "error", err)
+		slog.Error("Failed to initialize version reader", "error", err)
+		os.Exit(1)
 	}
 
-	metricsRegistry, err := registry.New(cfg, metricsReader)
+	infoReader, err := surrealdb.NewInfoReader(dbConnManager)
+	if err != nil {
+		slog.Error("Failed to create surrealdb metrics reader", "error", err)
+		os.Exit(1)
+	}
+
+	metricsRegistry, err := registry.New(cfg, versionReader, infoReader)
 	if err != nil {
 		slog.Error("Failed to initialize registry", "error", err)
 		os.Exit(1)

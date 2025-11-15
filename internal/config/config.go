@@ -12,7 +12,7 @@ import (
 
 // unexported root config type
 type config struct {
-	Exporter   exporterConfig   `yaml:"Exporter"`
+	Exporter   exporterConfig   `yaml:"exporter"`
 	SurrealDB  surrealDBConfig  `yaml:"surrealdb"`
 	Collectors collectorsConfig `yaml:"collectors"`
 	Logging    loggingConfig    `yaml:"logging"`
@@ -31,15 +31,17 @@ type surrealDBConfig struct {
 	Port           string        `yaml:"port"`
 	Username       string        `yaml:"username"`
 	Password       string        `yaml:"password"`
-	ConnectionPool bool          `yaml:"connection_pool"`
 	Timeout        time.Duration `yaml:"timeout"`
+	ConnectionPool bool          `yaml:"connection_pool"`
+	ClusterName    string        `yaml:"cluster_name"`
+	StorageEngine  string        `yaml:"storage_engine"`
+	DeploymentMode string        `yaml:"deployment_mode"`
 }
 
 type collectorsConfig struct {
-	ServerInfo  collectorConfig `yaml:"server_info"`
-	MetricsDemo collectorConfig `yaml:"metrics_demo"`
-	Go          collectorConfig `yaml:"go"`
-	Process     collectorConfig `yaml:"process"`
+	Info    collectorConfig `yaml:"info"`
+	Go      collectorConfig `yaml:"go"`
+	Process collectorConfig `yaml:"process"`
 }
 
 type collectorConfig struct {
@@ -89,10 +91,9 @@ func defaultConfig() *config {
 			Timeout:  10 * time.Second,
 		},
 		Collectors: collectorsConfig{
-			ServerInfo:  collectorConfig{Enabled: true},
-			MetricsDemo: collectorConfig{Enabled: true},
-			Go:          collectorConfig{Enabled: false},
-			Process:     collectorConfig{Enabled: false},
+			Info:    collectorConfig{Enabled: true},
+			Go:      collectorConfig{Enabled: false},
+			Process: collectorConfig{Enabled: false},
 		},
 	}
 }
@@ -143,12 +144,28 @@ func (c *config) SurrealPassword() string {
 	return c.SurrealDB.Password
 }
 
+func (c *config) SurrealTimeout() time.Duration {
+	return c.SurrealDB.Timeout
+}
+
 func (c *config) SurrealConnectionPool() bool {
 	return c.SurrealDB.ConnectionPool
 }
 
-func (c *config) SurrealTimeout() time.Duration {
-	return c.SurrealDB.Timeout
+func (c *config) ClusterName() string {
+	return c.SurrealDB.ClusterName
+}
+
+func (c *config) StorageEngine() string {
+	return c.SurrealDB.StorageEngine
+}
+
+func (c *config) DeploymentMode() string {
+	return c.SurrealDB.DeploymentMode
+}
+
+func (c *config) InfoCollectorEnabled() bool {
+	return c.Collectors.Info.Enabled
 }
 
 func (c *config) GoCollectorEnabled() bool {
