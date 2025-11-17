@@ -33,6 +33,8 @@ type InfoCollector struct {
 	infoMetricsReader InfoMetricsReader
 	constantLabels    prometheus.Labels
 
+	tableInfoChan chan<- []*domain.TableInfo
+
 	// Build information
 	versionDesc *prometheus.Desc
 
@@ -84,7 +86,7 @@ type InfoCollector struct {
 	indexBuildingUpdatedDesc *prometheus.Desc
 }
 
-func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader InfoMetricsReader) *InfoCollector {
+func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader InfoMetricsReader, tableInfoChan chan<- []*domain.TableInfo) *InfoCollector {
 	constantLabels := prometheus.Labels{
 		"cluster":         cfg.ClusterName(),
 		"storage_engine":  cfg.StorageEngine(),
@@ -95,6 +97,8 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 		versionReader:     versionReader,
 		infoMetricsReader: infoMetricsReader,
 		constantLabels:    constantLabels,
+
+		tableInfoChan: tableInfoChan,
 
 		// Build information
 		versionDesc: prometheus.NewDesc(
@@ -382,6 +386,8 @@ func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
 		slog.Error("InfoCollector: failed to fetch server info", "error", err)
 		return
 	}
+
+	c.tableInfoChan <- info.AllTables()
 
 	c.collectSystemMetrics(ch, info)
 	c.collectScrapeDuration(ch, info)

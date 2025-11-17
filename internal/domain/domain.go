@@ -88,6 +88,12 @@ type TableRecordCount struct {
 	RecordCount int
 }
 
+// RecordCountMetrics contains the complete set of record count metrics
+type RecordCountMetrics struct {
+	Tables         []*TableRecordCount
+	ScrapeDuration time.Duration
+}
+
 // TotalNamespaces returns the total number of namespaces
 func (i *SurrealDBInfo) TotalNamespaces() int {
 	return len(i.Namespaces)

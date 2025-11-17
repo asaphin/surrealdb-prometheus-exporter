@@ -47,7 +47,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	metricsRegistry, err := registry.New(cfg, versionReader, infoReader)
+	recordCountReader, err := surrealdb.NewRecordCountReader(dbConnManager)
+	if err != nil {
+		slog.Error("Failed to create surrealdb record count reader", "error", err)
+		os.Exit(1)
+	}
+
+	metricsRegistry, err := registry.New(cfg, versionReader, infoReader, recordCountReader)
 	if err != nil {
 		slog.Error("Failed to initialize registry", "error", err)
 		os.Exit(1)
