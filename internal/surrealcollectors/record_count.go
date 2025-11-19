@@ -15,8 +15,9 @@ type RecordCountReader interface {
 
 // recordCountCollector collects metrics about table record counts
 type recordCountCollector struct {
-	reader        RecordCountReader
-	tableInfoChan <-chan []*domain.TableInfo
+	reader RecordCountReader
+
+	tableInfoCache *tableInfoCache
 
 	// Metrics
 	tableRecordCount *prometheus.Desc
@@ -24,10 +25,10 @@ type recordCountCollector struct {
 }
 
 // NewRecordCountCollector creates a new record count collector
-func NewRecordCountCollector(reader RecordCountReader, tableInfoChan <-chan []*domain.TableInfo) prometheus.Collector {
+func NewRecordCountCollector(reader RecordCountReader) prometheus.Collector {
 	return &recordCountCollector{
-		reader:        reader,
-		tableInfoChan: tableInfoChan,
+		reader:         reader,
+		tableInfoCache: getTableInfoCache(),
 		tableRecordCount: prometheus.NewDesc(
 			"surrealdb_table_record_count",
 			"Number of records in a table",
@@ -53,8 +54,7 @@ func (c *recordCountCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
-	// Gather all tables from channel
-	tables := <-c.tableInfoChan
+	tables := c.tableInfoCache.get()
 
 	if len(tables) == 0 {
 		log.Println("No tables found to collect record counts")

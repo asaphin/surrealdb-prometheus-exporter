@@ -33,7 +33,7 @@ type InfoCollector struct {
 	infoMetricsReader InfoMetricsReader
 	constantLabels    prometheus.Labels
 
-	tableInfoChan chan<- []*domain.TableInfo
+	tableInfoCache *tableInfoCache
 
 	// Build information
 	versionDesc *prometheus.Desc
@@ -86,7 +86,7 @@ type InfoCollector struct {
 	indexBuildingUpdatedDesc *prometheus.Desc
 }
 
-func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader InfoMetricsReader, tableInfoChan chan<- []*domain.TableInfo) *InfoCollector {
+func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader InfoMetricsReader) *InfoCollector {
 	constantLabels := prometheus.Labels{
 		"cluster":         cfg.ClusterName(),
 		"storage_engine":  cfg.StorageEngine(),
@@ -98,7 +98,7 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 		infoMetricsReader: infoMetricsReader,
 		constantLabels:    constantLabels,
 
-		tableInfoChan: tableInfoChan,
+		tableInfoCache: getTableInfoCache(),
 
 		// Build information
 		versionDesc: prometheus.NewDesc(
@@ -387,7 +387,7 @@ func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	c.tableInfoChan <- info.AllTables()
+	c.tableInfoCache.set(info.AllTables())
 
 	c.collectSystemMetrics(ch, info)
 	c.collectScrapeDuration(ch, info)
