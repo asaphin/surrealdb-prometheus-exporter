@@ -9,7 +9,6 @@ surrealdb:
   username: root
   password: SecurePassword123!
   timeout: 10s
-  connection_pool: false
   cluster_name: local-test-cluster
   storage_engine: tikv # available values: memory, rocksdb, tikv
   deployment_mode: distributed # available values: single, distributed, cloud

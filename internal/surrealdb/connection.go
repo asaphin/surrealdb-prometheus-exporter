@@ -23,50 +23,6 @@ type ConnectionManager interface {
 	Get(ctx context.Context, ns, db string) (*surrealdb.DB, error)
 }
 
-type singleConnectionManager struct {
-	conn   *surrealdb.DB
-	lastNS string
-	lastDB string
-	mu     sync.Mutex
-	cfg    Config
-}
-
-func NewSingleConnectionManager(cfg Config) *singleConnectionManager {
-	return &singleConnectionManager{
-		cfg: cfg,
-		mu:  sync.Mutex{},
-	}
-}
-
-func (m *singleConnectionManager) Get(ctx context.Context, ns, db string) (*surrealdb.DB, error) {
-	if (ns == "") != (db == "") {
-		return nil, fmt.Errorf("namespace and database must both be provided or both be empty")
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.conn == nil {
-		conn, err := createConnection(ctx, m.cfg, ns, db)
-		if err != nil {
-			return nil, err
-		}
-
-		m.conn = conn
-	}
-
-	if ns != "" && (ns != m.lastNS || db != m.lastDB) {
-		if err := m.conn.Use(ctx, ns, db); err != nil {
-			return nil, fmt.Errorf("unable to use namespace/database: %w", err)
-		}
-
-		m.lastNS = ns
-		m.lastDB = db
-	}
-
-	return m.conn, nil
-}
-
 type multiConnectionManager struct {
 	connections sync.Map
 	creating    sync.Map

@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"log/slog"
 	"net/http"
 
@@ -25,7 +24,7 @@ type PageData struct {
 func StartServer(cfg Config, registry *prometheus.Registry) error {
 	indexTmpl, err := template.ParseFS(static.Files, "index.html")
 	if err != nil {
-		log.Printf("unable to parse templates: %v", err)
+		slog.Error("unable to parse templates", "error", err)
 		return fmt.Errorf("parse template: %w", err)
 	}
 
@@ -46,7 +45,7 @@ func StartServer(cfg Config, registry *prometheus.Registry) error {
 
 		if err = indexTmpl.Execute(w, data); err != nil {
 			http.Error(w, "template render error", http.StatusInternalServerError)
-			log.Printf("index template error: %v", err)
+			slog.Error("index template error", "error", err)
 			return
 		}
 	})

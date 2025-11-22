@@ -32,7 +32,6 @@ type surrealDBConfig struct {
 	Username       string        `yaml:"username"`
 	Password       string        `yaml:"password"`
 	Timeout        time.Duration `yaml:"timeout"`
-	ConnectionPool bool          `yaml:"connection_pool"`
 	ClusterName    string        `yaml:"cluster_name"`
 	StorageEngine  string        `yaml:"storage_engine"`
 	DeploymentMode string        `yaml:"deployment_mode"`
@@ -146,10 +145,6 @@ func (c *config) SurrealPassword() string {
 
 func (c *config) SurrealTimeout() time.Duration {
 	return c.SurrealDB.Timeout
-}
-
-func (c *config) SurrealConnectionPool() bool {
-	return c.SurrealDB.ConnectionPool
 }
 
 func (c *config) ClusterName() string {

@@ -2,7 +2,7 @@ package surrealcollectors
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/domain"
 	"github.com/prometheus/client_golang/prometheus"
@@ -57,14 +57,14 @@ func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 	tables := c.tableInfoCache.get()
 
 	if len(tables) == 0 {
-		log.Println("No tables found to collect record counts")
+		slog.Warn("no tables found to collect record counts")
 		return
 	}
 
 	// Fetch record counts
 	metrics, err := c.reader.RecordCount(ctx, tables)
 	if err != nil {
-		log.Printf("Error collecting record counts: %v", err)
+		slog.Error("unable to collect record counts", "error", err)
 		return
 	}
 

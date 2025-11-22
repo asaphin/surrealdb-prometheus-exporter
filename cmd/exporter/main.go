@@ -27,13 +27,7 @@ func main() {
 
 	logger.Configure(cfg)
 
-	var dbConnManager surrealdb.ConnectionManager
-
-	if cfg.SurrealConnectionPool() {
-		dbConnManager = surrealdb.NewMultiConnectionManager(cfg)
-	} else if !cfg.SurrealConnectionPool() {
-		dbConnManager = surrealdb.NewSingleConnectionManager(cfg)
-	}
+	dbConnManager := surrealdb.NewMultiConnectionManager(cfg)
 
 	versionReader, err := surrealdb.NewVersionReader(dbConnManager)
 	if err != nil {
