@@ -14,12 +14,6 @@ const (
 	SubsystemSystem = "system"
 )
 
-type Config interface {
-	ClusterName() string
-	StorageEngine() string
-	DeploymentMode() string
-}
-
 type VersionReader interface {
 	Version(ctx context.Context) (string, error)
 }
@@ -86,17 +80,10 @@ type InfoCollector struct {
 	indexBuildingUpdatedDesc *prometheus.Desc
 }
 
-func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader InfoMetricsReader) *InfoCollector {
-	constantLabels := prometheus.Labels{
-		"cluster":         cfg.ClusterName(),
-		"storage_engine":  cfg.StorageEngine(),
-		"deployment_mode": cfg.DeploymentMode(),
-	}
-
+func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetricsReader) *InfoCollector {
 	return &InfoCollector{
 		versionReader:     versionReader,
 		infoMetricsReader: infoMetricsReader,
-		constantLabels:    constantLabels,
 
 		tableInfoCache: getTableInfoCache(),
 
@@ -105,7 +92,7 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, SubsystemBuild, "info"),
 			"SurrealDB build and version information",
 			[]string{"version"},
-			constantLabels,
+			nil,
 		),
 
 		// System metrics
@@ -113,49 +100,49 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "available_parallelism"),
 			"Available CPU parallelism for the SurrealDB instance",
 			nil,
-			constantLabels,
+			nil,
 		),
 		cpuUsageDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "cpu_usage"),
 			"Current CPU usage (0.0 to 1.0)",
 			nil,
-			constantLabels,
+			nil,
 		),
 		loadAverageDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "load_average"),
 			"System load average",
 			[]string{"period"},
-			constantLabels,
+			nil,
 		),
 		memoryAllocatedDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "memory_allocated_bytes"),
 			"Total allocated memory in bytes",
 			nil,
-			constantLabels,
+			nil,
 		),
 		memoryUsageDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "memory_usage_bytes"),
 			"Current memory usage in bytes",
 			nil,
-			constantLabels,
+			nil,
 		),
 		memoryUsageRatioDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "memory_usage_ratio"),
 			"Memory usage as ratio of allocated memory (0.0 to 1.0)",
 			nil,
-			constantLabels,
+			nil,
 		),
 		physicalCoresDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "physical_cores"),
 			"Number of physical CPU cores",
 			nil,
-			constantLabels,
+			nil,
 		),
 		threadsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "threads"),
 			"Number of threads",
 			nil,
-			constantLabels,
+			nil,
 		),
 
 		// Info scrape metrics
@@ -163,7 +150,7 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, SubsystemInfo, "scrape_duration_seconds"),
 			"Duration of the INFO scrape in seconds",
 			nil,
-			constantLabels,
+			nil,
 		),
 
 		// Root-level metrics
@@ -171,19 +158,19 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, "root", "accesses"),
 			"Number of accesses defined at root level",
 			nil,
-			constantLabels,
+			nil,
 		),
 		rootUsersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "root", "users"),
 			"Number of users defined at root level",
 			nil,
-			constantLabels,
+			nil,
 		),
 		nodesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "root", "nodes"),
 			"Number of nodes in the deployment",
 			nil,
-			constantLabels,
+			nil,
 		),
 
 		// Namespace-level metrics
@@ -191,19 +178,19 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, "namespace", "accesses"),
 			"Number of accesses defined in the namespace",
 			[]string{"namespace"},
-			constantLabels,
+			nil,
 		),
 		namespaceDatabasesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "namespace", "databases"),
 			"Number of databases in the namespace",
 			[]string{"namespace"},
-			constantLabels,
+			nil,
 		),
 		namespaceUsersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "namespace", "users"),
 			"Number of users defined in the namespace",
 			[]string{"namespace"},
-			constantLabels,
+			nil,
 		),
 
 		// Database-level metrics
@@ -211,55 +198,55 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, "database", "accesses"),
 			"Number of accesses defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseAnalyzersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "analyzers"),
 			"Number of analyzers defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseApisDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "apis"),
 			"Number of APIs defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseConfigsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "configs"),
 			"Number of configs defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseFunctionsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "functions"),
 			"Number of functions defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseModelsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "models"),
 			"Number of models defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseParamsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "params"),
 			"Number of params defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseTablesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "tables"),
 			"Number of tables in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 		databaseUsersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "users"),
 			"Number of users defined in the database",
 			[]string{"namespace", "database"},
-			constantLabels,
+			nil,
 		),
 
 		// Table-level metrics
@@ -267,31 +254,31 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, "table", "events"),
 			"Number of events defined in the table",
 			[]string{"namespace", "database", "table"},
-			constantLabels,
+			nil,
 		),
 		tableFieldsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "fields"),
 			"Number of fields defined in the table",
 			[]string{"namespace", "database", "table"},
-			constantLabels,
+			nil,
 		),
 		tableIndexesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "indexes"),
 			"Number of indexes defined in the table",
 			[]string{"namespace", "database", "table"},
-			constantLabels,
+			nil,
 		),
 		tableLivesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "lives"),
 			"Number of live queries defined in the table",
 			[]string{"namespace", "database", "table"},
-			constantLabels,
+			nil,
 		),
 		tableTablesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "tables"),
 			"Number of sub-tables defined in the table",
 			[]string{"namespace", "database", "table"},
-			constantLabels,
+			nil,
 		),
 
 		// Index-level metrics
@@ -299,25 +286,25 @@ func NewInfoCollector(cfg Config, versionReader VersionReader, infoMetricsReader
 			prometheus.BuildFQName(domain.Namespace, "index", "building"),
 			"Whether the index is currently building (1) or not (0)",
 			[]string{"namespace", "database", "table", "index", "status"},
-			constantLabels,
+			nil,
 		),
 		indexBuildingInitialDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building_initial"),
 			"Initial count for index building process",
 			[]string{"namespace", "database", "table", "index", "status"},
-			constantLabels,
+			nil,
 		),
 		indexBuildingPendingDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building_pending"),
 			"Pending count for index building process",
 			[]string{"namespace", "database", "table", "index", "status"},
-			constantLabels,
+			nil,
 		),
 		indexBuildingUpdatedDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building_updated"),
 			"Updated count for index building process",
 			[]string{"namespace", "database", "table", "index", "status"},
-			constantLabels,
+			nil,
 		),
 	}
 }
@@ -424,7 +411,7 @@ func (c *InfoCollector) collectSystemMetrics(ch chan<- prometheus.Metric, info *
 	ch <- prometheus.MustNewConstMetric(
 		c.cpuUsageDesc,
 		prometheus.GaugeValue,
-		info.System.CpuUsage,
+		info.System.CpuUsage/100,
 	)
 
 	// Load average metrics with period labels (1m, 5m, 15m)
