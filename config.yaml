@@ -4,18 +4,31 @@ exporter:
 
 surrealdb:
   scheme: ws
-  host: 192.168.1.161
+  host: localhost
   port: 8000
   username: root
   password: SecurePassword123!
   timeout: 10s
-  cluster_name: local-test-cluster
-  storage_engine: tikv # available values: memory, rocksdb, tikv
-  deployment_mode: distributed # available values: single, distributed, cloud
+  cluster_name: local-single-node
+  storage_engine: memory # available values: memory, rocksdb, tikv
+  deployment_mode: single # available values: single, distributed, cloud
 
 collectors:
   info:
     enabled: true
+  live_query:
+    enabled: true
+    tables:
+      include:
+        - "*:*:*"
+      exclude:
+        - "*:*:temp_*"
+    reconnect_delay: 5s
+    max_reconnect_attempts: 10
+  stats_table:
+    enabled: false
+  open_telemetry:
+    enabled: false
   go:
     enabled: false
   process:

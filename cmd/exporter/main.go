@@ -7,6 +7,7 @@ import (
 
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/api"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/config"
+	"github.com/asaphin/surrealdb-prometheus-exporter/internal/engine"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/logger"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/registry"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/surrealdb"
@@ -47,7 +48,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	metricsRegistry, err := registry.New(cfg, versionReader, infoReader, recordCountReader)
+	tableFilter := engine.NewTableFilter(cfg.LiveQueryIncludePatterns(), cfg.LiveQueryExcludePatterns())
+
+	liveQueryProvider := surrealdb.NewLiveQueryManager(dbConnManager, cfg.LiveQueryReconnectDelay(), cfg.LiveQueryMaxReconnectAttempts())
+
+	metricsRegistry, err := registry.New(
+		cfg,
+		versionReader,
+		infoReader,
+		recordCountReader,
+		liveQueryProvider,
+		tableFilter,
+	)
 	if err != nil {
 		slog.Error("Failed to initialize registry", "error", err)
 		os.Exit(1)

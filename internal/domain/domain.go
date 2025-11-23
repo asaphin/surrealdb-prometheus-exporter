@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -399,4 +400,72 @@ func (i *SurrealDBInfo) Table(namespace, database, table string) (*TableInfo, bo
 	}
 	tbl, exists := db.Tables[table]
 	return tbl, exists
+}
+
+// TableIdentifier represents a unique table reference
+type TableIdentifier struct {
+	Namespace string
+	Database  string
+	Table     string
+}
+
+// String returns the colon-separated identifier
+func (t TableIdentifier) String() string {
+	return t.Namespace + ":" + t.Database + ":" + t.Table
+}
+
+// ParseTableIdentifier parses a colon-separated table identifier
+func ParseTableIdentifier(s string) (TableIdentifier, error) {
+	parts := strings.Split(s, ":")
+	if len(parts) != 3 {
+		return TableIdentifier{}, fmt.Errorf("invalid table identifier: %s", s)
+	}
+	return TableIdentifier{
+		Namespace: parts[0],
+		Database:  parts[1],
+		Table:     parts[2],
+	}, nil
+}
+
+// OperationType represents the data model type detected from actual data
+type OperationType string
+
+const (
+	OperationTypeGraph      OperationType = "graph"
+	OperationTypeRelational OperationType = "relational"
+	OperationTypeKeyValue   OperationType = "key_value"
+	OperationTypeDocument   OperationType = "document"
+	OperationTypeUnknown    OperationType = "unknown"
+)
+
+// OperationAction represents the type of database operation
+type OperationAction string
+
+const (
+	ActionCreate  OperationAction = "CREATE"
+	ActionUpdate  OperationAction = "UPDATE"
+	ActionDelete  OperationAction = "DELETE"
+	ActionUnknown OperationAction = "UNKNOWN"
+)
+
+// TableOperationMetrics contains operation counts for a specific table and type
+type TableOperationMetrics struct {
+	Namespace     string
+	Database      string
+	Table         string
+	OperationType OperationType
+	Creates       int64
+	Updates       int64
+	Deletes       int64
+}
+
+// LiveQueryMetrics contains all accumulated metrics
+type LiveQueryMetrics struct {
+	Tables    map[string]*TableOperationMetrics // key: tableID:operationType
+	Timestamp time.Time
+}
+
+// Key returns a unique key for this metric
+func (t *TableOperationMetrics) Key() string {
+	return fmt.Sprintf("%s:%s:%s:%s", t.Namespace, t.Database, t.Table, t.OperationType)
 }

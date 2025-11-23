@@ -8,6 +8,7 @@ import (
 
 type Config interface {
 	InfoCollectorEnabled() bool
+	LiveQueryEnabled() bool
 	GoCollectorEnabled() bool
 	ProcessCollectorEnabled() bool
 	ClusterName() string
@@ -15,7 +16,14 @@ type Config interface {
 	DeploymentMode() string
 }
 
-func New(cfg Config, versionReader surrealcollectors.VersionReader, infoMetricsReader surrealcollectors.InfoMetricsReader, recordCountReader surrealcollectors.RecordCountReader) (prometheus.Gatherer, error) {
+func New(
+	cfg Config,
+	versionReader surrealcollectors.VersionReader,
+	infoMetricsReader surrealcollectors.InfoMetricsReader,
+	recordCountReader surrealcollectors.RecordCountReader,
+	liveQueryProvider surrealcollectors.LiveQueryInfoProvider,
+	filter surrealcollectors.TableFilter,
+) (prometheus.Gatherer, error) {
 	registry := prometheus.NewRegistry()
 
 	constantLabels := prometheus.Labels{
@@ -31,6 +39,10 @@ func New(cfg Config, versionReader surrealcollectors.VersionReader, infoMetricsR
 			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewInfoCollector(versionReader, infoMetricsReader)),
 			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewRecordCountCollector(recordCountReader)),
 		)
+	}
+
+	if cfg.LiveQueryEnabled() {
+		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewLiveQueryCollector(liveQueryProvider, filter)))
 	}
 
 	if cfg.GoCollectorEnabled() {

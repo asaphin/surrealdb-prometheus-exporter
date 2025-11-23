@@ -38,13 +38,26 @@ type surrealDBConfig struct {
 }
 
 type collectorsConfig struct {
-	Info    collectorConfig `yaml:"info"`
-	Go      collectorConfig `yaml:"go"`
-	Process collectorConfig `yaml:"process"`
+	Info      collectorConfig `yaml:"info"`
+	LiveQuery liveQueryConfig `yaml:"live_query"`
+	Go        collectorConfig `yaml:"go"`
+	Process   collectorConfig `yaml:"process"`
 }
 
 type collectorConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+type liveQueryConfig struct {
+	Enabled              bool          `yaml:"enabled"`
+	Tables               tableConfig   `yaml:"tables"`
+	ReconnectDelay       time.Duration `yaml:"reconnect_delay"`
+	MaxReconnectAttempts int           `yaml:"max_reconnect_attempts"`
+}
+
+type tableConfig struct {
+	Include []string `yaml:"include"`
+	Exclude []string `yaml:"exclude"`
 }
 
 type loggingConfig struct {
@@ -90,7 +103,16 @@ func defaultConfig() *config {
 			Timeout:  10 * time.Second,
 		},
 		Collectors: collectorsConfig{
-			Info:    collectorConfig{Enabled: true},
+			Info: collectorConfig{Enabled: true},
+			LiveQuery: liveQueryConfig{
+				Enabled:              false,
+				ReconnectDelay:       5 * time.Second,
+				MaxReconnectAttempts: 10,
+				Tables: tableConfig{
+					Include: []string{},
+					Exclude: []string{},
+				},
+			},
 			Go:      collectorConfig{Enabled: false},
 			Process: collectorConfig{Enabled: false},
 		},
@@ -181,4 +203,24 @@ func (c *config) Level() string {
 
 func (c *config) CustomAttributes() map[string]any {
 	return c.Logging.CustomAttributes
+}
+
+func (c *config) LiveQueryEnabled() bool {
+	return c.Collectors.LiveQuery.Enabled
+}
+
+func (c *config) LiveQueryIncludePatterns() []string {
+	return c.Collectors.LiveQuery.Tables.Include
+}
+
+func (c *config) LiveQueryExcludePatterns() []string {
+	return c.Collectors.LiveQuery.Tables.Exclude
+}
+
+func (c *config) LiveQueryReconnectDelay() time.Duration {
+	return c.Collectors.LiveQuery.ReconnectDelay
+}
+
+func (c *config) LiveQueryMaxReconnectAttempts() int {
+	return c.Collectors.LiveQuery.MaxReconnectAttempts
 }
