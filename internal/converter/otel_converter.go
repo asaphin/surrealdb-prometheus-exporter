@@ -26,17 +26,21 @@ type Converter struct {
 	counters   map[string]*prometheus.CounterVec
 	histograms map[string]*HistogramCollector
 
+	// Track label names for each registered metric to ensure consistency
+	metricLabelNames map[string][]string
+
 	mu sync.RWMutex
 }
 
 // NewConverter creates a new converter instance
 func NewConverter(cfg Config, registry *prometheus.Registry) *Converter {
 	return &Converter{
-		config:     cfg,
-		registry:   registry,
-		gauges:     make(map[string]*prometheus.GaugeVec),
-		counters:   make(map[string]*prometheus.CounterVec),
-		histograms: make(map[string]*HistogramCollector),
+		config:           cfg,
+		registry:         registry,
+		gauges:           make(map[string]*prometheus.GaugeVec),
+		counters:         make(map[string]*prometheus.CounterVec),
+		histograms:       make(map[string]*HistogramCollector),
+		metricLabelNames: make(map[string][]string),
 	}
 }
 
@@ -64,8 +68,8 @@ func (c *Converter) convertMetric(metric domain.Metric) error {
 	// Add namespace prefix
 	promName = domain.Namespace + "_" + promName
 
-	// Prepare labels
-	promLabels, labelNames := c.prepareLabels(metric.Labels)
+	// Prepare labels with consistency check
+	promLabels, labelNames := c.prepareLabels(promName, metric.Labels)
 
 	// Convert based on metric type
 	switch metric.Type {
@@ -81,7 +85,28 @@ func (c *Converter) convertMetric(metric domain.Metric) error {
 }
 
 // prepareLabels sanitizes labels and adds constant labels
-func (c *Converter) prepareLabels(labels map[string]string) (map[string]string, []string) {
+// Now also accepts metric name to ensure label consistency
+func (c *Converter) prepareLabels(metricName string, labels map[string]string) (map[string]string, []string) {
+	// Check if we have previously registered label names for this metric
+	if existingLabelNames, exists := c.metricLabelNames[metricName]; exists {
+		// Use the existing label names to maintain consistency
+		promLabels := make(map[string]string)
+		for _, labelName := range existingLabelNames {
+			if value, ok := labels[labelName]; ok {
+				promLabels[labelName] = value
+			} else {
+				// Provide empty string for missing labels
+				promLabels[labelName] = ""
+			}
+		}
+		// Add constant labels
+		for k, v := range c.config.OTLPConstLabels() {
+			promLabels[k] = v
+		}
+		return promLabels, existingLabelNames
+	}
+
+	// First time seeing this metric - create new label set
 	promLabels := make(map[string]string)
 	labelNames := make([]string, 0, len(labels)+len(c.config.OTLPConstLabels()))
 
@@ -97,6 +122,9 @@ func (c *Converter) prepareLabels(labels map[string]string) (map[string]string, 
 		promLabels[k] = v
 		labelNames = append(labelNames, k)
 	}
+
+	// Store the label names for future consistency
+	c.metricLabelNames[metricName] = labelNames
 
 	return promLabels, labelNames
 }
