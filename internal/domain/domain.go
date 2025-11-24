@@ -469,3 +469,23 @@ type LiveQueryMetrics struct {
 func (t *TableOperationMetrics) Key() string {
 	return fmt.Sprintf("%s:%s:%s:%s", t.Namespace, t.Database, t.Table, t.OperationType)
 }
+
+// StatsTableData contains operation counts from a side stats table for a specific table
+type StatsTableData struct {
+	Namespace        string
+	Database         string
+	Table            string
+	CreateRelational int64
+	CreateKV         int64
+	CreateGraph      int64
+	CreateDocument   int64
+	UpdateRelational int64
+	UpdateKV         int64
+	UpdateGraph      int64
+	UpdateDocument   int64
+	DeleteRelational int64
+	DeleteKV         int64
+	DeleteGraph      int64
+	DeleteDocument   int64
+	LastUpdate       time.Time
+}

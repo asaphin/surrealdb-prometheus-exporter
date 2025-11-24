@@ -17,6 +17,7 @@ type Config interface {
 	SurrealUsername() string
 	SurrealPassword() string
 	SurrealTimeout() time.Duration // TODO figure out if required
+	StatsTableNamePrefix() string
 }
 
 type ConnectionManager interface {

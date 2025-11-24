@@ -9,6 +9,7 @@ import (
 type Config interface {
 	InfoCollectorEnabled() bool
 	LiveQueryEnabled() bool
+	StatsTableEnabled() bool
 	GoCollectorEnabled() bool
 	ProcessCollectorEnabled() bool
 	ClusterName() string
@@ -22,7 +23,9 @@ func New(
 	infoMetricsReader surrealcollectors.InfoMetricsReader,
 	recordCountReader surrealcollectors.RecordCountReader,
 	liveQueryProvider surrealcollectors.LiveQueryInfoProvider,
-	filter surrealcollectors.TableFilter,
+	statsTableProvider surrealcollectors.StatsTableInfoProvider,
+	liveQueryFilter surrealcollectors.TableFilter,
+	statsTableFilter surrealcollectors.TableFilter,
 ) (prometheus.Gatherer, error) {
 	registry := prometheus.NewRegistry()
 
@@ -42,7 +45,11 @@ func New(
 	}
 
 	if cfg.LiveQueryEnabled() {
-		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewLiveQueryCollector(liveQueryProvider, filter)))
+		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewLiveQueryCollector(liveQueryProvider, liveQueryFilter)))
+	}
+
+	if cfg.StatsTableEnabled() {
+		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewStatsTableCollector(statsTableProvider, statsTableFilter)))
 	}
 
 	if cfg.GoCollectorEnabled() {

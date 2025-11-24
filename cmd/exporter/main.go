@@ -36,7 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	infoReader, err := surrealdb.NewInfoReader(dbConnManager)
+	infoReader, err := surrealdb.NewInfoReader(cfg, dbConnManager)
 	if err != nil {
 		slog.Error("Failed to create surrealdb metrics reader", "error", err)
 		os.Exit(1)
@@ -49,8 +49,10 @@ func main() {
 	}
 
 	tableFilter := engine.NewTableFilter(cfg.LiveQueryIncludePatterns(), cfg.LiveQueryExcludePatterns())
-
 	liveQueryProvider := surrealdb.NewLiveQueryManager(dbConnManager, cfg.LiveQueryReconnectDelay(), cfg.LiveQueryMaxReconnectAttempts())
+
+	statsTableFilter := engine.NewTableFilter(cfg.StatsTableIncludePatterns(), cfg.StatsTableExcludePatterns())
+	statsTableProvider := surrealdb.NewStatsTableManager(dbConnManager, cfg.StatsTableRemoveOrphanTables(), cfg.StatsTableNamePrefix())
 
 	metricsRegistry, err := registry.New(
 		cfg,
@@ -58,7 +60,9 @@ func main() {
 		infoReader,
 		recordCountReader,
 		liveQueryProvider,
+		statsTableProvider,
 		tableFilter,
+		statsTableFilter,
 	)
 	if err != nil {
 		slog.Error("Failed to initialize registry", "error", err)

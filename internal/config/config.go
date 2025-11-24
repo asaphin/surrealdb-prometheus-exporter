@@ -38,10 +38,11 @@ type surrealDBConfig struct {
 }
 
 type collectorsConfig struct {
-	Info      collectorConfig `yaml:"info"`
-	LiveQuery liveQueryConfig `yaml:"live_query"`
-	Go        collectorConfig `yaml:"go"`
-	Process   collectorConfig `yaml:"process"`
+	Info       collectorConfig  `yaml:"info"`
+	LiveQuery  liveQueryConfig  `yaml:"live_query"`
+	StatsTable statsTableConfig `yaml:"stats_table"`
+	Go         collectorConfig  `yaml:"go"`
+	Process    collectorConfig  `yaml:"process"`
 }
 
 type collectorConfig struct {
@@ -53,6 +54,13 @@ type liveQueryConfig struct {
 	Tables               tableConfig   `yaml:"tables"`
 	ReconnectDelay       time.Duration `yaml:"reconnect_delay"`
 	MaxReconnectAttempts int           `yaml:"max_reconnect_attempts"`
+}
+
+type statsTableConfig struct {
+	Enabled             bool        `yaml:"enabled"`
+	Tables              tableConfig `yaml:"tables"`
+	RemoveOrphanTables  bool        `yaml:"remove_orphan_tables"`
+	SideTableNamePrefix string      `yaml:"side_table_name_prefix"`
 }
 
 type tableConfig struct {
@@ -108,6 +116,15 @@ func defaultConfig() *config {
 				Enabled:              false,
 				ReconnectDelay:       5 * time.Second,
 				MaxReconnectAttempts: 10,
+				Tables: tableConfig{
+					Include: []string{},
+					Exclude: []string{},
+				},
+			},
+			StatsTable: statsTableConfig{
+				Enabled:             false,
+				RemoveOrphanTables:  false,
+				SideTableNamePrefix: "_stats_",
 				Tables: tableConfig{
 					Include: []string{},
 					Exclude: []string{},
@@ -223,4 +240,24 @@ func (c *config) LiveQueryReconnectDelay() time.Duration {
 
 func (c *config) LiveQueryMaxReconnectAttempts() int {
 	return c.Collectors.LiveQuery.MaxReconnectAttempts
+}
+
+func (c *config) StatsTableEnabled() bool {
+	return c.Collectors.StatsTable.Enabled
+}
+
+func (c *config) StatsTableIncludePatterns() []string {
+	return c.Collectors.StatsTable.Tables.Include
+}
+
+func (c *config) StatsTableExcludePatterns() []string {
+	return c.Collectors.StatsTable.Tables.Exclude
+}
+
+func (c *config) StatsTableRemoveOrphanTables() bool {
+	return c.Collectors.StatsTable.RemoveOrphanTables
+}
+
+func (c *config) StatsTableNamePrefix() string {
+	return c.Collectors.StatsTable.SideTableNamePrefix
 }

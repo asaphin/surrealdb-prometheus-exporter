@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -67,15 +68,16 @@ type indexBuildingInfo struct {
 }
 
 type infoReader struct {
+	cfg  Config
 	conn ConnectionManager
 }
 
-func NewInfoReader(conn ConnectionManager) (*infoReader, error) {
+func NewInfoReader(cfg Config, conn ConnectionManager) (*infoReader, error) {
 	if conn == nil {
 		return nil, errors.New("conn argument cannot be nil")
 	}
 
-	return &infoReader{conn: conn}, nil
+	return &infoReader{cfg: cfg, conn: conn}, nil
 }
 
 // Info retrieves complete hierarchical information about the SurrealDB instance
@@ -329,10 +331,13 @@ func (r *infoReader) fetchDatabase(ctx context.Context, namespace, databaseName 
 		Params:    len(dbData.Params),
 	}
 
-	// Get all table names
+	// Get all table names, FILTERING OUT STATS TABLES
 	tableNames := make([]string, 0, len(dbData.Tables))
 	for name := range dbData.Tables {
-		tableNames = append(tableNames, name)
+		// Skip stats tables (internal tables created by exporter)
+		if !strings.HasPrefix(name, r.cfg.StatsTableNamePrefix()) {
+			tableNames = append(tableNames, name)
+		}
 	}
 
 	// Fetch all tables in parallel
