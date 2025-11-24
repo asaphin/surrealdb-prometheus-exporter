@@ -77,16 +77,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Start OTLP receiver if enabled
+	// Create combined gatherer - start with the main registry
+	gatherers := prometheus.Gatherers{metricsRegistry}
+
+	// Start OTLP receiver if enabled and add its registry to gatherers
 	var otlpShutdown func()
 	if cfg.OTLPReceiverEnabled() {
-		otlpShutdown = startOTLPReceiver(cfg)
+		var otlpRegistry *prometheus.Registry
+		otlpRegistry, otlpShutdown = startOTLPReceiver(cfg)
+		gatherers = append(gatherers, otlpRegistry)
 	}
 
 	// Start main HTTP server with graceful shutdown
 	serverErrChan := make(chan error, 1)
 	go func() {
-		if err := api.StartPrometheusServer(cfg, metricsRegistry); err != nil {
+		if err := api.StartPrometheusServer(cfg, gatherers); err != nil {
 			serverErrChan <- err
 		}
 	}()
@@ -110,8 +115,8 @@ func main() {
 	slog.Info("Exporter shutdown complete")
 }
 
-// startOTLPReceiver starts the OTLP receiver (HTTP and gRPC)
-func startOTLPReceiver(cfg config.Config) func() {
+// startOTLPReceiver starts the OTLP receiver (HTTP and gRPC) and returns the registry
+func startOTLPReceiver(cfg config.Config) (*prometheus.Registry, func()) {
 	slog.Info("Starting OTLP receiver")
 
 	// Create a separate Prometheus registry for OTLP metrics
@@ -164,8 +169,8 @@ func startOTLPReceiver(cfg config.Config) func() {
 		}()
 	}
 
-	// Return shutdown function
-	return func() {
+	// Return registry and shutdown function
+	return otlpRegistry, func() {
 		slog.Info("Shutting down OTLP receivers")
 
 		// Shutdown HTTP server
