@@ -1,7 +1,10 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
+	"math"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -488,4 +491,217 @@ type StatsTableData struct {
 	DeleteGraph      int64
 	DeleteDocument   int64
 	LastUpdate       time.Time
+}
+
+// OTel related structures
+
+// MetricType represents different Prometheus metric types
+type MetricType int
+
+const (
+	MetricTypeUnknown MetricType = iota
+	MetricTypeGauge
+	MetricTypeCounter
+	MetricTypeHistogram
+	MetricTypeSummary
+)
+
+// String returns the string representation of MetricType
+func (m MetricType) String() string {
+	switch m {
+	case MetricTypeGauge:
+		return "gauge"
+	case MetricTypeCounter:
+		return "counter"
+	case MetricTypeHistogram:
+		return "histogram"
+	case MetricTypeSummary:
+		return "summary"
+	default:
+		return "unknown"
+	}
+}
+
+// Metric represents a domain metric independent of OTLP or Prometheus format
+type Metric struct {
+	Name        string
+	Type        MetricType
+	Value       float64
+	Labels      map[string]string
+	Timestamp   time.Time
+	Description string
+	Unit        string
+
+	// For histograms
+	HistogramData *HistogramData
+}
+
+// HistogramData contains histogram-specific data with cumulative bucket counts
+type HistogramData struct {
+	Count       uint64
+	Sum         float64
+	Buckets     []HistogramBucket
+	CreatedTime time.Time
+}
+
+// HistogramBucket represents a single histogram bucket with cumulative count
+type HistogramBucket struct {
+	UpperBound float64 // +Inf for the last bucket
+	Count      uint64  // Cumulative count up to this boundary
+}
+
+// MetricBatch represents a collection of metrics received together
+type MetricBatch struct {
+	Metrics       []Metric
+	ReceivedAt    time.Time
+	ResourceAttrs map[string]string
+}
+
+// NewMetric creates a new metric with validation
+func NewMetric(name string, metricType MetricType) (*Metric, error) {
+	if name == "" {
+		return nil, errors.New("metric name cannot be empty")
+	}
+
+	return &Metric{
+		Name:   name,
+		Type:   metricType,
+		Labels: make(map[string]string),
+	}, nil
+}
+
+// AddLabel adds a label to the metric
+func (m *Metric) AddLabel(key, value string) {
+	if m.Labels == nil {
+		m.Labels = make(map[string]string)
+	}
+	m.Labels[key] = value
+}
+
+// IsValid checks if the metric has required fields
+func (m *Metric) IsValid() bool {
+	return m.Name != "" && m.Type != MetricTypeUnknown
+}
+
+// HasHistogramData returns true if this metric has histogram data
+func (m *Metric) HasHistogramData() bool {
+	return m.Type == MetricTypeHistogram && m.HistogramData != nil
+}
+
+var invalidLabelCharRegex = regexp.MustCompile(`[^a-zA-Z0-9_]`)
+
+// SanitizeLabelName converts OTEL attribute names to valid Prometheus label names
+// Replaces invalid characters with underscores and ensures the name doesn't start with a number
+func SanitizeLabelName(name string) string {
+	// Replace dots and invalid characters with underscores
+	sanitized := invalidLabelCharRegex.ReplaceAllString(name, "_")
+
+	// Ensure it doesn't start with a number
+	if len(sanitized) > 0 && sanitized[0] >= '0' && sanitized[0] <= '9' {
+		sanitized = "_" + sanitized
+	}
+
+	return sanitized
+}
+
+// SanitizeMetricName converts OTEL metric names to Prometheus naming conventions
+func SanitizeMetricName(name string, strategy string) string {
+	switch strategy {
+	case "UnderscoreEscapingWithSuffixes":
+		return underscoreEscaping(name)
+	case "NoTranslation":
+		return name
+	default:
+		return underscoreEscaping(name)
+	}
+}
+
+// underscoreEscaping replaces dots and invalid characters with underscores
+func underscoreEscaping(name string) string {
+	// Replace dots with underscores
+	name = strings.ReplaceAll(name, ".", "_")
+
+	// Replace other invalid characters
+	name = invalidLabelCharRegex.ReplaceAllString(name, "_")
+
+	return name
+}
+
+// AddSuffixByType adds appropriate Prometheus suffix based on metric type and unit
+func AddSuffixByType(name string, metricType MetricType, unit string) string {
+	// Add unit suffix if present and not already included
+	if unit != "" && !strings.Contains(name, unit) {
+		name = name + "_" + unit
+	}
+
+	// Add type suffix for counters
+	switch metricType {
+	case MetricTypeCounter:
+		if !strings.HasSuffix(name, "_total") {
+			name = name + "_total"
+		}
+	}
+
+	return name
+}
+
+// BucketsFromBounds creates histogram buckets from explicit bounds with cumulative counts
+func BucketsFromBounds(bounds []float64, counts []uint64) []HistogramBucket {
+	buckets := make([]HistogramBucket, 0, len(bounds)+1)
+
+	// Create buckets for each bound
+	for i := 0; i < len(bounds) && i < len(counts); i++ {
+		buckets = append(buckets, HistogramBucket{
+			UpperBound: bounds[i],
+			Count:      counts[i],
+		})
+	}
+
+	// Add +Inf bucket if counts has one more element than bounds
+	if len(counts) > len(bounds) {
+		buckets = append(buckets, HistogramBucket{
+			UpperBound: math.Inf(1),
+			Count:      counts[len(counts)-1],
+		})
+	}
+
+	return buckets
+}
+
+// MetricsByType groups metrics by their type
+func (mb *MetricBatch) MetricsByType() map[MetricType][]Metric {
+	result := make(map[MetricType][]Metric)
+
+	for _, metric := range mb.Metrics {
+		result[metric.Type] = append(result[metric.Type], metric)
+	}
+
+	return result
+}
+
+// Count returns the number of metrics in the batch
+func (mb *MetricBatch) Count() int {
+	return len(mb.Metrics)
+}
+
+// AddMetric adds a metric to the batch
+func (mb *MetricBatch) AddMetric(metric Metric) {
+	mb.Metrics = append(mb.Metrics, metric)
+}
+
+// Filter filters metrics by a predicate function
+func (mb *MetricBatch) Filter(predicate func(Metric) bool) *MetricBatch {
+	filtered := &MetricBatch{
+		ReceivedAt:    mb.ReceivedAt,
+		ResourceAttrs: mb.ResourceAttrs,
+		Metrics:       make([]Metric, 0),
+	}
+
+	for _, metric := range mb.Metrics {
+		if predicate(metric) {
+			filtered.Metrics = append(filtered.Metrics, metric)
+		}
+	}
+
+	return filtered
 }

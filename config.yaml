@@ -26,7 +26,7 @@ collectors:
     reconnect_delay: 5s
     max_reconnect_attempts: 10
   stats_table:
-    enabled: true
+    enabled: false
     tables:
       include:
         - "*:*:*"
@@ -35,7 +35,7 @@ collectors:
     remove_orphan_tables: true
     side_table_name_prefix: "_stats_"
   open_telemetry:
-    enabled: false
+    enabled: true
   go:
     enabled: false
   process:
@@ -46,3 +46,22 @@ logging:
   level: debug
   custom_attributes:
     application: surrealdb-prometheus-exporter
+
+# OTLP Receiver Configuration
+# Receives OpenTelemetry metrics from SurrealDB
+otlp_receiver:
+  enabled: true
+  http_endpoint: ":4318"  # HTTP endpoint for OTLP/HTTP
+  grpc_endpoint: ":4317"  # gRPC endpoint for OTLP/gRPC
+  max_recv_size: 4        # Maximum receive size in MB
+
+# OTLP Converter Configuration
+# Controls how OTLP metrics are converted to Prometheus format
+otlp_converter:
+  namespace: "surrealdb"                           # Metric name prefix
+  translation_strategy: "UnderscoreEscapingWithSuffixes"  # Name translation strategy
+  const_labels:                                    # Labels added to all OTLP metrics
+    exporter: "surrealdb-prometheus-exporter"
+  enable_batching: true                            # Enable metric batching
+  batch_size: 100                                  # Metrics per batch
+  batch_timeout_ms: 1000                           # Batch timeout in milliseconds

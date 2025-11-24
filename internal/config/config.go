@@ -7,15 +7,28 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asaphin/surrealdb-prometheus-exporter/internal/converter"
 	"gopkg.in/yaml.v3"
 )
 
+type Config interface {
+	converter.Config
+	OTLPBatchingEnabled() bool
+	OTLPBatchTimeoutMs() int
+	OTLPBatchSize() int
+	OTLPHTTPEndpoint() string
+	OTLPGRPCEndpoint() string
+	OTLPMaxRecvSize() int
+}
+
 // unexported root config type
 type config struct {
-	Exporter   exporterConfig   `yaml:"exporter"`
-	SurrealDB  surrealDBConfig  `yaml:"surrealdb"`
-	Collectors collectorsConfig `yaml:"collectors"`
-	Logging    loggingConfig    `yaml:"logging"`
+	Exporter      exporterConfig      `yaml:"exporter"`
+	SurrealDB     surrealDBConfig     `yaml:"surrealdb"`
+	Collectors    collectorsConfig    `yaml:"collectors"`
+	Logging       loggingConfig       `yaml:"logging"`
+	OTLPReceiver  otlpReceiverConfig  `yaml:"otlp_receiver"`
+	OTLPConverter otlpConverterConfig `yaml:"otlp_converter"`
 }
 
 // all nested types are also unexported, but their fields stay exported
@@ -72,6 +85,22 @@ type loggingConfig struct {
 	Format           string         `yaml:"format"`
 	Level            string         `yaml:"level"`
 	CustomAttributes map[string]any `yaml:"custom_attributes"`
+}
+
+type otlpReceiverConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	HTTPEndpoint string `yaml:"http_endpoint"`
+	GRPCEndpoint string `yaml:"grpc_endpoint"`
+	MaxRecvSize  int    `yaml:"max_recv_size"` // in MB
+}
+
+type otlpConverterConfig struct {
+	Namespace           string            `yaml:"namespace"`
+	TranslationStrategy string            `yaml:"translation_strategy"`
+	ConstLabels         map[string]string `yaml:"const_labels"`
+	EnableBatching      bool              `yaml:"enable_batching"`
+	BatchSize           int               `yaml:"batch_size"`
+	BatchTimeoutMs      int               `yaml:"batch_timeout_ms"`
 }
 
 // Load is the only exported symbol
@@ -132,6 +161,20 @@ func defaultConfig() *config {
 			},
 			Go:      collectorConfig{Enabled: false},
 			Process: collectorConfig{Enabled: false},
+		},
+		OTLPReceiver: otlpReceiverConfig{
+			Enabled:      false,
+			HTTPEndpoint: ":4318",
+			GRPCEndpoint: ":4317",
+			MaxRecvSize:  4,
+		},
+		OTLPConverter: otlpConverterConfig{
+			Namespace:           "surrealdb",
+			TranslationStrategy: "UnderscoreEscapingWithSuffixes",
+			ConstLabels:         map[string]string{},
+			EnableBatching:      true,
+			BatchSize:           100,
+			BatchTimeoutMs:      1000,
 		},
 	}
 }
@@ -260,4 +303,48 @@ func (c *config) StatsTableRemoveOrphanTables() bool {
 
 func (c *config) StatsTableNamePrefix() string {
 	return c.Collectors.StatsTable.SideTableNamePrefix
+}
+
+// OTLP Receiver configuration accessors
+
+func (c *config) OTLPReceiverEnabled() bool {
+	return c.OTLPReceiver.Enabled
+}
+
+func (c *config) OTLPHTTPEndpoint() string {
+	return c.OTLPReceiver.HTTPEndpoint
+}
+
+func (c *config) OTLPGRPCEndpoint() string {
+	return c.OTLPReceiver.GRPCEndpoint
+}
+
+func (c *config) OTLPMaxRecvSize() int {
+	return c.OTLPReceiver.MaxRecvSize
+}
+
+// OTLP Converter configuration accessors
+
+func (c *config) OTLPConverterNamespace() string {
+	return c.OTLPConverter.Namespace
+}
+
+func (c *config) OTLPTranslationStrategy() string {
+	return c.OTLPConverter.TranslationStrategy
+}
+
+func (c *config) OTLPConstLabels() map[string]string {
+	return c.OTLPConverter.ConstLabels
+}
+
+func (c *config) OTLPBatchingEnabled() bool {
+	return c.OTLPConverter.EnableBatching
+}
+
+func (c *config) OTLPBatchSize() int {
+	return c.OTLPConverter.BatchSize
+}
+
+func (c *config) OTLPBatchTimeoutMs() int {
+	return c.OTLPConverter.BatchTimeoutMs
 }

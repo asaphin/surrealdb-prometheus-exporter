@@ -21,7 +21,7 @@ type PageData struct {
 	EnabledCollectorsHTML template.HTML
 }
 
-func StartServer(cfg Config, registry prometheus.Gatherer) error {
+func StartPrometheusServer(cfg Config, registry prometheus.Gatherer) error {
 	indexTmpl, err := template.ParseFS(static.Files, "index.html")
 	if err != nil {
 		slog.Error("unable to parse templates", "error", err)
