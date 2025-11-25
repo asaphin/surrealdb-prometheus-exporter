@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/processor"
-	"github.com/davecgh/go-spew/spew"
 	"go.opentelemetry.io/collector/pdata/pmetric/pmetricotlp"
 	"google.golang.org/grpc"
 )
@@ -27,8 +26,6 @@ func NewOTELGRPCServer(processor processor.Processor) *OTELGRPCServer {
 func (s *OTELGRPCServer) Export(ctx context.Context, req pmetricotlp.ExportRequest) (pmetricotlp.ExportResponse, error) {
 	// Extract metrics from the request
 	metrics := req.Metrics()
-
-	slog.Debug("raw OTel metrics", "metrics", spew.Sdump(metrics))
 
 	// Convert to domain model
 	batch := ConvertPmetricToDomain(metrics)

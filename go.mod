@@ -3,7 +3,6 @@ module github.com/asaphin/surrealdb-prometheus-exporter
 go 1.25
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/surrealdb/surrealdb.go v1.0.0
 	go.opentelemetry.io/collector/pdata v1.46.0
