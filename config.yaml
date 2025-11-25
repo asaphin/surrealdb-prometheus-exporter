@@ -9,14 +9,19 @@ surrealdb:
   username: root
   password: SecurePassword123!
   timeout: 10s
-  cluster_name: local-single-node
-  storage_engine: memory # available values: memory, rocksdb, tikv
-  deployment_mode: single # available values: single, distributed, cloud
+  # Required fields - will use defaults with warnings if empty/invalid
+  cluster_name: local-single-node           # cannot be empty
+  storage_engine: memory                    # allowed values: memory, rocksdb, tikv
+  deployment_mode: single                   # allowed values: single, distributed, cloud
 
 collectors:
-  info:
+  # Info collector is always active - no configuration needed
+  # Record count collector is now separately configurable
+  record_count:
     enabled: true
   live_query:
+    # Note: live_query is only available for 'single' deployment_mode
+    # Will be automatically disabled with a warning for other modes
     enabled: false
     tables:
       include:
@@ -34,8 +39,18 @@ collectors:
         - "*:*:temp_*"
     remove_orphan_tables: true
     side_table_name_prefix: "_stats_"
+  # OpenTelemetry metrics receiver
+  # Receives OTLP metrics from SurrealDB via gRPC and converts to Prometheus format
+  # Note: Namespace is hardcoded as "surrealdb" and constant labels
+  # (cluster, storage_engine, deployment_mode) are derived from surrealdb config
   open_telemetry:
     enabled: true
+    grpc_endpoint: ":4317"                                  # gRPC endpoint for OTLP/gRPC
+    max_recv_size: 4                                        # Maximum receive size in MB
+    translation_strategy: "UnderscoreEscapingWithSuffixes"  # Name translation strategy
+    enable_batching: true                                   # Enable metric batching
+    batch_size: 100                                         # Metrics per batch
+    batch_timeout_ms: 1000                                  # Batch timeout in milliseconds
   go:
     enabled: false
   process:
@@ -46,22 +61,3 @@ logging:
   level: debug
   custom_attributes:
     application: surrealdb-prometheus-exporter
-
-# OTLP Receiver Configuration
-# Receives OpenTelemetry metrics from SurrealDB
-otlp_receiver:
-  enabled: true
-  http_endpoint: ":4318"  # HTTP endpoint for OTLP/HTTP
-  grpc_endpoint: ":4317"  # gRPC endpoint for OTLP/gRPC
-  max_recv_size: 4        # Maximum receive size in MB
-
-# OTLP Converter Configuration
-# Controls how OTLP metrics are converted to Prometheus format
-otlp_converter:
-  namespace: "surrealdb"                           # Metric name prefix
-  translation_strategy: "UnderscoreEscapingWithSuffixes"  # Name translation strategy
-  const_labels:                                    # Labels added to all OTLP metrics
-    exporter: "surrealdb-prometheus-exporter"
-  enable_batching: true                            # Enable metric batching
-  batch_size: 100                                  # Metrics per batch
-  batch_timeout_ms: 1000                           # Batch timeout in milliseconds

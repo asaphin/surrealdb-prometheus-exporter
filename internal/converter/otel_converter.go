@@ -13,13 +13,16 @@ import (
 // Config holds converter configuration
 type Config interface {
 	OTLPTranslationStrategy() string
-	OTLPConstLabels() map[string]string
+	ClusterName() string
+	StorageEngine() string
+	DeploymentMode() string
 }
 
 // Converter handles conversion of domain metrics to Prometheus format
 type Converter struct {
-	config   Config
-	registry *prometheus.Registry
+	config      Config
+	registry    *prometheus.Registry
+	constLabels map[string]string
 
 	// Metric collectors organized by type
 	gauges     map[string]*prometheus.GaugeVec
@@ -34,9 +37,17 @@ type Converter struct {
 
 // NewConverter creates a new converter instance
 func NewConverter(cfg Config, registry *prometheus.Registry) *Converter {
+	// Build constant labels from cluster configuration (same approach as registry)
+	constLabels := map[string]string{
+		"cluster":         cfg.ClusterName(),
+		"storage_engine":  cfg.StorageEngine(),
+		"deployment_mode": cfg.DeploymentMode(),
+	}
+
 	return &Converter{
 		config:           cfg,
 		registry:         registry,
+		constLabels:      constLabels,
 		gauges:           make(map[string]*prometheus.GaugeVec),
 		counters:         make(map[string]*prometheus.CounterVec),
 		histograms:       make(map[string]*HistogramCollector),
@@ -103,7 +114,7 @@ func (c *Converter) prepareLabels(metricName string, labels map[string]string) (
 			}
 		}
 		// Add constant labels
-		for k, v := range c.config.OTLPConstLabels() {
+		for k, v := range c.constLabels {
 			promLabels[k] = v
 		}
 		return promLabels, existingLabelNames
@@ -111,7 +122,7 @@ func (c *Converter) prepareLabels(metricName string, labels map[string]string) (
 
 	// First time seeing this metric - create new label set
 	promLabels := make(map[string]string)
-	labelNames := make([]string, 0, len(labels)+len(c.config.OTLPConstLabels()))
+	labelNames := make([]string, 0, len(labels)+len(c.constLabels))
 
 	// Sanitize metric labels
 	for k, v := range labels {
@@ -121,7 +132,7 @@ func (c *Converter) prepareLabels(metricName string, labels map[string]string) (
 	}
 
 	// Add constant labels
-	for k, v := range c.config.OTLPConstLabels() {
+	for k, v := range c.constLabels {
 		promLabels[k] = v
 		labelNames = append(labelNames, k)
 	}
