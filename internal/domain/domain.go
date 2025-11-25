@@ -627,11 +627,156 @@ func underscoreEscaping(name string) string {
 	return name
 }
 
+// UnitConversion defines how to convert a unit to Prometheus base units
+type UnitConversion struct {
+	TargetUnit string  // The Prometheus base unit name
+	Multiplier float64 // Multiply value by this to convert
+}
+
+// unitConversions maps OTLP units to Prometheus base units
+// Following Prometheus naming conventions: https://prometheus.io/docs/practices/naming/
+var unitConversions = map[string]UnitConversion{
+	// Time units -> seconds
+	"ms":           {TargetUnit: "seconds", Multiplier: 0.001},
+	"milliseconds": {TargetUnit: "seconds", Multiplier: 0.001},
+	"us":           {TargetUnit: "seconds", Multiplier: 0.000001},
+	"microseconds": {TargetUnit: "seconds", Multiplier: 0.000001},
+	"ns":           {TargetUnit: "seconds", Multiplier: 0.000000001},
+	"nanoseconds":  {TargetUnit: "seconds", Multiplier: 0.000000001},
+	"s":            {TargetUnit: "seconds", Multiplier: 1},
+	"seconds":      {TargetUnit: "seconds", Multiplier: 1},
+	"m":            {TargetUnit: "seconds", Multiplier: 60},
+	"minutes":      {TargetUnit: "seconds", Multiplier: 60},
+	"h":            {TargetUnit: "seconds", Multiplier: 3600},
+	"hours":        {TargetUnit: "seconds", Multiplier: 3600},
+
+	// Size units -> bytes
+	"By":        {TargetUnit: "bytes", Multiplier: 1},
+	"bytes":     {TargetUnit: "bytes", Multiplier: 1},
+	"b":         {TargetUnit: "bytes", Multiplier: 1},
+	"kb":        {TargetUnit: "bytes", Multiplier: 1024},
+	"kilobytes": {TargetUnit: "bytes", Multiplier: 1024},
+	"KiBy":      {TargetUnit: "bytes", Multiplier: 1024},
+	"mb":        {TargetUnit: "bytes", Multiplier: 1024 * 1024},
+	"megabytes": {TargetUnit: "bytes", Multiplier: 1024 * 1024},
+	"MiBy":      {TargetUnit: "bytes", Multiplier: 1024 * 1024},
+	"gb":        {TargetUnit: "bytes", Multiplier: 1024 * 1024 * 1024},
+	"gigabytes": {TargetUnit: "bytes", Multiplier: 1024 * 1024 * 1024},
+	"GiBy":      {TargetUnit: "bytes", Multiplier: 1024 * 1024 * 1024},
+
+	// Ratio/percentage units
+	"1":       {TargetUnit: "ratio", Multiplier: 1},
+	"ratio":   {TargetUnit: "ratio", Multiplier: 1},
+	"%":       {TargetUnit: "ratio", Multiplier: 0.01},
+	"percent": {TargetUnit: "ratio", Multiplier: 0.01},
+}
+
+// metricsAlreadyInBaseUnits lists OTEL metric name patterns that are known to already
+// be in Prometheus base units according to OTEL semantic conventions, regardless of
+// what unit label the source may incorrectly send.
+// Reference: https://opentelemetry.io/docs/specs/semconv/http/http-metrics/
+var metricsAlreadyInBaseUnits = map[string]string{
+	// HTTP metrics - OTEL specifies these are in bytes
+	"http.server.request.size":  "bytes",
+	"http.server.response.size": "bytes",
+	"http.client.request.size":  "bytes",
+	"http.client.response.size": "bytes",
+	// RPC metrics - OTEL specifies these are in bytes
+	"rpc.server.request.size":  "bytes",
+	"rpc.server.response.size": "bytes",
+	"rpc.client.request.size":  "bytes",
+	"rpc.client.response.size": "bytes",
+}
+
+// GetEffectiveUnit returns the correct unit for a metric, handling cases where
+// the source sends an incorrect unit label. For known OTEL metrics, we use
+// the unit specified by OTEL semantic conventions instead of the declared unit.
+func GetEffectiveUnit(metricName, declaredUnit string) string {
+	// Check if this metric has a known correct unit per OTEL conventions
+	if correctUnit, ok := metricsAlreadyInBaseUnits[metricName]; ok {
+		return correctUnit
+	}
+	return declaredUnit
+}
+
+// GetUnitConversion returns the conversion for a given unit, or nil if no conversion needed
+func GetUnitConversion(unit string) *UnitConversion {
+	if conv, ok := unitConversions[strings.ToLower(unit)]; ok {
+		return &conv
+	}
+	return nil
+}
+
+// GetUnitConversionForMetric returns the conversion for a metric, taking into account
+// that some metrics may have incorrectly labeled units that should be overridden
+func GetUnitConversionForMetric(metricName, declaredUnit string) *UnitConversion {
+	effectiveUnit := GetEffectiveUnit(metricName, declaredUnit)
+	return GetUnitConversion(effectiveUnit)
+}
+
+// ConvertValue converts a value from the source unit to the Prometheus base unit
+func ConvertValue(value float64, unit string) float64 {
+	if conv := GetUnitConversion(unit); conv != nil {
+		return value * conv.Multiplier
+	}
+	return value
+}
+
+// ConvertValueForMetric converts a value taking into account metric-specific unit corrections
+func ConvertValueForMetric(value float64, metricName, declaredUnit string) float64 {
+	if conv := GetUnitConversionForMetric(metricName, declaredUnit); conv != nil {
+		return value * conv.Multiplier
+	}
+	return value
+}
+
+// GetTargetUnit returns the Prometheus base unit for a given OTLP unit
+func GetTargetUnit(unit string) string {
+	if conv := GetUnitConversion(unit); conv != nil {
+		return conv.TargetUnit
+	}
+	return unit
+}
+
+// GetTargetUnitForMetric returns the Prometheus base unit, handling metric-specific corrections
+func GetTargetUnitForMetric(metricName, declaredUnit string) string {
+	effectiveUnit := GetEffectiveUnit(metricName, declaredUnit)
+	if conv := GetUnitConversion(effectiveUnit); conv != nil {
+		return conv.TargetUnit
+	}
+	return effectiveUnit
+}
+
 // AddSuffixByType adds appropriate Prometheus suffix based on metric type and unit
+// It converts units to Prometheus base units (e.g., ms -> seconds, mb -> bytes)
 func AddSuffixByType(name string, metricType MetricType, unit string) string {
+	// Convert to Prometheus base unit
+	targetUnit := GetTargetUnit(unit)
+
 	// Add unit suffix if present and not already included
-	if unit != "" && !strings.Contains(name, unit) {
-		name = name + "_" + unit
+	if targetUnit != "" && !strings.Contains(name, targetUnit) {
+		name = name + "_" + targetUnit
+	}
+
+	// Add type suffix for counters
+	switch metricType {
+	case MetricTypeCounter:
+		if !strings.HasSuffix(name, "_total") {
+			name = name + "_total"
+		}
+	}
+
+	return name
+}
+
+// AddSuffixByTypeForMetric is like AddSuffixByType but handles metric-specific unit corrections
+func AddSuffixByTypeForMetric(name, originalMetricName string, metricType MetricType, declaredUnit string) string {
+	// Get the correct target unit considering metric-specific overrides
+	targetUnit := GetTargetUnitForMetric(originalMetricName, declaredUnit)
+
+	// Add unit suffix if present and not already included
+	if targetUnit != "" && !strings.Contains(name, targetUnit) {
+		name = name + "_" + targetUnit
 	}
 
 	// Add type suffix for counters

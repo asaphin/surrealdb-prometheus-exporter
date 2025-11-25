@@ -61,9 +61,12 @@ func (c *Converter) Convert(batch domain.MetricBatch) error {
 
 // convertMetric converts a single metric to Prometheus format
 func (c *Converter) convertMetric(metric domain.Metric) error {
+	// Store original metric name for unit correction lookups
+	originalName := metric.Name
+
 	// Sanitize and prepare metric name
 	promName := domain.SanitizeMetricName(metric.Name, c.config.OTLPTranslationStrategy())
-	promName = domain.AddSuffixByType(promName, metric.Type, metric.Unit)
+	promName = domain.AddSuffixByTypeForMetric(promName, originalName, metric.Type, metric.Unit)
 
 	// Add namespace prefix
 	promName = domain.Namespace + "_" + promName
@@ -74,11 +77,11 @@ func (c *Converter) convertMetric(metric domain.Metric) error {
 	// Convert based on metric type
 	switch metric.Type {
 	case domain.MetricTypeGauge:
-		return c.convertGauge(promName, metric, promLabels, labelNames)
+		return c.convertGauge(promName, originalName, metric, promLabels, labelNames)
 	case domain.MetricTypeCounter:
-		return c.convertCounter(promName, metric, promLabels, labelNames)
+		return c.convertCounter(promName, originalName, metric, promLabels, labelNames)
 	case domain.MetricTypeHistogram:
-		return c.convertHistogram(promName, metric, promLabels, labelNames)
+		return c.convertHistogram(promName, originalName, metric, promLabels, labelNames)
 	default:
 		return fmt.Errorf("unsupported metric type: %v", metric.Type)
 	}
@@ -130,7 +133,7 @@ func (c *Converter) prepareLabels(metricName string, labels map[string]string) (
 }
 
 // convertGauge converts a gauge metric
-func (c *Converter) convertGauge(name string, metric domain.Metric, labels map[string]string, labelNames []string) error {
+func (c *Converter) convertGauge(name, originalName string, metric domain.Metric, labels map[string]string, labelNames []string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -156,12 +159,14 @@ func (c *Converter) convertGauge(name string, metric domain.Metric, labels map[s
 		c.gauges[name] = gauge
 	}
 
-	gauge.With(labels).Set(metric.Value)
+	// Apply unit conversion to value, using metric-aware correction
+	value := domain.ConvertValueForMetric(metric.Value, originalName, metric.Unit)
+	gauge.With(labels).Set(value)
 	return nil
 }
 
 // convertCounter converts a counter metric
-func (c *Converter) convertCounter(name string, metric domain.Metric, labels map[string]string, labelNames []string) error {
+func (c *Converter) convertCounter(name, originalName string, metric domain.Metric, labels map[string]string, labelNames []string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -187,15 +192,17 @@ func (c *Converter) convertCounter(name string, metric domain.Metric, labels map
 		c.counters[name] = counter
 	}
 
+	// Apply unit conversion to value, using metric-aware correction
 	// For counters, we need to add the delta
 	// Since OTLP typically sends cumulative values, we just set it
 	// Note: This is a simplification - in production you may want to track state
-	counter.With(labels).Add(metric.Value)
+	value := domain.ConvertValueForMetric(metric.Value, originalName, metric.Unit)
+	counter.With(labels).Add(value)
 	return nil
 }
 
 // convertHistogram converts a histogram metric
-func (c *Converter) convertHistogram(name string, metric domain.Metric, labels map[string]string, labelNames []string) error {
+func (c *Converter) convertHistogram(name, originalName string, metric domain.Metric, labels map[string]string, labelNames []string) error {
 	if !metric.HasHistogramData() {
 		return fmt.Errorf("histogram metric missing histogram data")
 	}
@@ -219,9 +226,51 @@ func (c *Converter) convertHistogram(name string, metric domain.Metric, labels m
 		c.histograms[name] = histCollector
 	}
 
+	// Apply unit conversion to histogram data, using metric-aware correction
+	convertedMetric := metric
+	if metric.Unit != "" {
+		convertedMetric = convertHistogramUnitsForMetric(metric, originalName)
+	}
+
 	// Update histogram with new data
-	histCollector.Update(metric, labels)
+	histCollector.Update(convertedMetric, labels)
 	return nil
+}
+
+// convertHistogramUnitsForMetric applies unit conversion to histogram bucket bounds and sum,
+// using metric-aware correction for known OTEL metrics
+func convertHistogramUnitsForMetric(metric domain.Metric, originalName string) domain.Metric {
+	conv := domain.GetUnitConversionForMetric(originalName, metric.Unit)
+	if conv == nil || conv.Multiplier == 1 {
+		return metric
+	}
+
+	// Create a copy of the histogram data with converted values
+	convertedData := &domain.HistogramData{
+		Count:       metric.HistogramData.Count,
+		Sum:         metric.HistogramData.Sum * conv.Multiplier,
+		CreatedTime: metric.HistogramData.CreatedTime,
+		Buckets:     make([]domain.HistogramBucket, len(metric.HistogramData.Buckets)),
+	}
+
+	// Convert bucket upper bounds
+	for i, bucket := range metric.HistogramData.Buckets {
+		convertedData.Buckets[i] = domain.HistogramBucket{
+			UpperBound: bucket.UpperBound * conv.Multiplier,
+			Count:      bucket.Count,
+		}
+	}
+
+	return domain.Metric{
+		Name:          metric.Name,
+		Type:          metric.Type,
+		Value:         metric.Value,
+		Labels:        metric.Labels,
+		Timestamp:     metric.Timestamp,
+		Description:   metric.Description,
+		Unit:          metric.Unit,
+		HistogramData: convertedData,
+	}
 }
 
 // HistogramCollector is a custom Prometheus collector for histograms

@@ -142,23 +142,29 @@ func convertHistogram(metric pmetric.Metric) []domain.Metric {
 			CreatedTime: dp.StartTimestamp().AsTime(),
 		}
 
-		// Convert buckets - OTLP uses explicit bounds with cumulative counts
+		// Convert buckets - OTLP uses explicit bounds with per-bucket counts
+		// Prometheus requires CUMULATIVE counts, so we need to accumulate
 		bounds := dp.ExplicitBounds()
 		counts := dp.BucketCounts()
 
-		// Create buckets for each explicit bound
+		// Accumulate counts to convert from per-bucket to cumulative
+		var cumulativeCount uint64 = 0
+
+		// Create buckets for each explicit bound with cumulative counts
 		for j := 0; j < bounds.Len(); j++ {
+			cumulativeCount += counts.At(j)
 			histData.Buckets = append(histData.Buckets, domain.HistogramBucket{
 				UpperBound: bounds.At(j),
-				Count:      counts.At(j),
+				Count:      cumulativeCount,
 			})
 		}
 
 		// Add +Inf bucket if counts has one more element than bounds
 		if counts.Len() > bounds.Len() {
+			cumulativeCount += counts.At(counts.Len() - 1)
 			histData.Buckets = append(histData.Buckets, domain.HistogramBucket{
 				UpperBound: math.Inf(1),
-				Count:      counts.At(counts.Len() - 1),
+				Count:      cumulativeCount,
 			})
 		}
 
