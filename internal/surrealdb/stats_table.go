@@ -248,7 +248,7 @@ func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) err
 
 	// Create stats table with a single record (idempotent - won't fail if exists)
 	createTableQuery := fmt.Sprintf(`
-	IF !(%[1]s:stats) THEN
+	IF !record::exists(%[1]s:stats) THEN
 		CREATE %[1]s:stats SET
 			target_table = "%[2]s",
 			create_relational = 0,

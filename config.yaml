@@ -36,7 +36,7 @@ collectors:
     reconnect_delay: 5s
     max_reconnect_attempts: 10
   stats_table:
-    enabled: false
+    enabled: true
     tables:
       include:
         - "*:*:*"
@@ -57,9 +57,9 @@ collectors:
     batch_size: 100                                         # Metrics per batch
     batch_timeout_ms: 1000                                  # Batch timeout in milliseconds
   go:
-    enabled: false
+    enabled: true
   process:
-    enabled: false
+    enabled: true
 
 logging:
   format: json
