@@ -95,7 +95,8 @@ type collectorConfig struct {
 }
 
 type recordCountConfig struct {
-	Enabled bool `yaml:"enabled"`
+	Enabled bool        `yaml:"enabled"`
+	Tables  tableConfig `yaml:"tables"`
 }
 
 type liveQueryConfig struct {
@@ -267,6 +268,10 @@ func validateCollectorsConfig(cfg *config) {
 	validateTablePatterns("stats_table.tables.include", &cfg.Collectors.StatsTable.Tables.Include)
 	validateTablePatterns("stats_table.tables.exclude", &cfg.Collectors.StatsTable.Tables.Exclude)
 
+	// Validate table filter patterns for record_count
+	validateTablePatterns("record_count.tables.include", &cfg.Collectors.RecordCount.Tables.Include)
+	validateTablePatterns("record_count.tables.exclude", &cfg.Collectors.RecordCount.Tables.Exclude)
+
 	// Validate OpenTelemetry settings
 	validateOpenTelemetryConfig(cfg)
 }
@@ -372,6 +377,10 @@ func defaultConfig() *config {
 			},
 			RecordCount: recordCountConfig{
 				Enabled: true,
+				Tables: tableConfig{
+					Include: []string{},
+					Exclude: []string{},
+				},
 			},
 			StatsTable: statsTableConfig{
 				Enabled:             false,
@@ -466,6 +475,14 @@ func (c *config) InfoCollectorEnabled() bool {
 
 func (c *config) RecordCountCollectorEnabled() bool {
 	return c.Collectors.RecordCount.Enabled
+}
+
+func (c *config) RecordCountIncludePatterns() []string {
+	return c.Collectors.RecordCount.Tables.Include
+}
+
+func (c *config) RecordCountExcludePatterns() []string {
+	return c.Collectors.RecordCount.Tables.Exclude
 }
 
 func (c *config) GoCollectorEnabled() bool {

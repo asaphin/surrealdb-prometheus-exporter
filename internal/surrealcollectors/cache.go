@@ -53,3 +53,11 @@ func (c *tableInfoCache) clear() {
 
 	c.tables = make([]*domain.TableInfo, 0)
 }
+
+// PrewarmTableCache pre-populates the table cache with table information.
+// This should be called at startup before the HTTP server starts to avoid
+// race conditions between collectors that depend on the cache.
+func PrewarmTableCache(tables []*domain.TableInfo) {
+	cache := getTableInfoCache()
+	cache.set(tables)
+}

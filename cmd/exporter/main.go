@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/logger"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/processor"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/registry"
+	"github.com/asaphin/surrealdb-prometheus-exporter/internal/surrealcollectors"
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/surrealdb"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
@@ -60,6 +62,23 @@ func main() {
 	statsTableFilter := engine.NewTableFilter(cfg.StatsTableIncludePatterns(), cfg.StatsTableExcludePatterns())
 	statsTableProvider := surrealdb.NewStatsTableManager(dbConnManager, cfg.StatsTableRemoveOrphanTables(), cfg.StatsTableNamePrefix())
 
+	recordCountFilter := engine.NewTableFilter(cfg.RecordCountIncludePatterns(), cfg.RecordCountExcludePatterns())
+
+	// Pre-warm the table cache to avoid race conditions between collectors.
+	// This ensures that StatsTableCollector and LiveQueryCollector have table data
+	// available on the first scrape, regardless of collector execution order.
+	if cfg.StatsTableEnabled() || cfg.LiveQueryEnabled() || cfg.RecordCountCollectorEnabled() {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.SurrealTimeout())
+		info, err := infoReader.Info(ctx)
+		cancel()
+		if err != nil {
+			slog.Warn("Failed to pre-warm table cache", "error", err)
+		} else {
+			surrealcollectors.PrewarmTableCache(info.AllTables())
+			slog.Info("Table cache pre-warmed", "table_count", len(info.AllTables()))
+		}
+	}
+
 	metricsRegistry, err := registry.New(
 		cfg,
 		versionReader,
@@ -69,6 +88,7 @@ func main() {
 		statsTableProvider,
 		tableFilter,
 		statsTableFilter,
+		recordCountFilter,
 	)
 	if err != nil {
 		slog.Error("Failed to initialize registry", "error", err)

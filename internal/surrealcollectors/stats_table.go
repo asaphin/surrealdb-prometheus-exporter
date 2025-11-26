@@ -2,6 +2,8 @@ package surrealcollectors
 
 import (
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/domain"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,20 +21,24 @@ type StatsTableCollector struct {
 	statsTableProvider StatsTableInfoProvider
 	tableCache         *tableInfoCache
 	filter             TableFilter
+	statsTablePrefix   string
 
 	// Prometheus gauges - these represent current values from stats tables
-	operations *prometheus.GaugeVec
+	operations     *prometheus.GaugeVec
+	scrapeDuration *prometheus.Desc
 }
 
 // NewStatsTableCollector creates a new stats table collector
 func NewStatsTableCollector(
 	statsTableProvider StatsTableInfoProvider,
 	filter TableFilter,
+	statsTablePrefix string,
 ) *StatsTableCollector {
 	return &StatsTableCollector{
 		statsTableProvider: statsTableProvider,
 		tableCache:         getTableInfoCache(),
 		filter:             filter,
+		statsTablePrefix:   statsTablePrefix,
 
 		operations: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -43,27 +49,67 @@ func NewStatsTableCollector(
 			},
 			[]string{"namespace", "database", "table", "operation", "operation_type"},
 		),
+		scrapeDuration: prometheus.NewDesc(
+			domain.Namespace+"_"+SubsystemStatsTable+"_scrape_duration_seconds",
+			"Duration of the stats table scrape in seconds",
+			nil,
+			nil,
+		),
 	}
 }
 
 // Describe implements prometheus.Collector
 func (c *StatsTableCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.operations.Describe(ch)
+	ch <- c.scrapeDuration
 }
 
 // Collect implements prometheus.Collector
 func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
+	startTime := time.Now()
+
 	// Get tables from cache
 	tables := c.tableCache.get()
 	if len(tables) == 0 {
 		slog.Debug("No tables in cache for stats table monitoring")
+		// Still report scrape duration even when no tables
+		ch <- prometheus.MustNewConstMetric(
+			c.scrapeDuration,
+			prometheus.GaugeValue,
+			time.Since(startTime).Seconds(),
+		)
+		return
+	}
+
+	// Filter out stats tables themselves to prevent infinite cascade
+	// (e.g., don't create stats tables for _stats_* tables)
+	var nonStatsTables []*domain.TableInfo
+	for _, table := range tables {
+		if !strings.HasPrefix(table.Name, c.statsTablePrefix) {
+			nonStatsTables = append(nonStatsTables, table)
+		}
+	}
+
+	if len(nonStatsTables) == 0 {
+		slog.Debug("No non-stats tables found for stats table monitoring")
+		ch <- prometheus.MustNewConstMetric(
+			c.scrapeDuration,
+			prometheus.GaugeValue,
+			time.Since(startTime).Seconds(),
+		)
 		return
 	}
 
 	// Filter tables based on config
-	filteredTableIDs := c.filter.FilterTables(tables)
+	filteredTableIDs := c.filter.FilterTables(nonStatsTables)
 	if len(filteredTableIDs) == 0 {
 		slog.Debug("No tables match filter patterns for stats table")
+		// Still report scrape duration even when no tables match
+		ch <- prometheus.MustNewConstMetric(
+			c.scrapeDuration,
+			prometheus.GaugeValue,
+			time.Since(startTime).Seconds(),
+		)
 		return
 	}
 
@@ -71,6 +117,12 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 	statsData, err := c.statsTableProvider.StatsTableInfo(filteredTableIDs)
 	if err != nil {
 		slog.Error("Failed to get stats table metrics", "error", err)
+		// Still report scrape duration on error
+		ch <- prometheus.MustNewConstMetric(
+			c.scrapeDuration,
+			prometheus.GaugeValue,
+			time.Since(startTime).Seconds(),
+		)
 		return
 	}
 
@@ -178,4 +230,11 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Collect the actual metric values
 	c.operations.Collect(ch)
+
+	// Report scrape duration
+	ch <- prometheus.MustNewConstMetric(
+		c.scrapeDuration,
+		prometheus.GaugeValue,
+		time.Since(startTime).Seconds(),
+	)
 }

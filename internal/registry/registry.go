@@ -11,6 +11,7 @@ type Config interface {
 	RecordCountCollectorEnabled() bool
 	LiveQueryEnabled() bool
 	StatsTableEnabled() bool
+	StatsTableNamePrefix() string
 	GoCollectorEnabled() bool
 	ProcessCollectorEnabled() bool
 	ClusterName() string
@@ -27,6 +28,7 @@ func New(
 	statsTableProvider surrealcollectors.StatsTableInfoProvider,
 	liveQueryFilter surrealcollectors.TableFilter,
 	statsTableFilter surrealcollectors.TableFilter,
+	recordCountFilter surrealcollectors.TableFilter,
 ) (prometheus.Gatherer, error) {
 	registry := prometheus.NewRegistry()
 
@@ -48,7 +50,7 @@ func New(
 	// Record count collector is now separately configurable
 	if cfg.RecordCountCollectorEnabled() {
 		registry.MustRegister(
-			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewRecordCountCollector(recordCountReader)),
+			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewRecordCountCollector(recordCountReader, recordCountFilter)),
 		)
 	}
 
@@ -57,7 +59,7 @@ func New(
 	}
 
 	if cfg.StatsTableEnabled() {
-		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewStatsTableCollector(statsTableProvider, statsTableFilter)))
+		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewStatsTableCollector(statsTableProvider, statsTableFilter, cfg.StatsTableNamePrefix())))
 	}
 
 	if cfg.GoCollectorEnabled() {

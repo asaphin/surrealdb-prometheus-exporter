@@ -19,10 +19,15 @@ collectors:
   # Record count collector is now separately configurable
   record_count:
     enabled: true
+    tables:
+      include:
+        - "*:*:*"
+      exclude:
+        - "*:*:temp_*"
   live_query:
     # Note: live_query is only available for 'single' deployment_mode
     # Will be automatically disabled with a warning for other modes
-    enabled: false
+    enabled: true
     tables:
       include:
         - "*:*:*"
@@ -37,7 +42,7 @@ collectors:
         - "*:*:*"
       exclude:
         - "*:*:temp_*"
-    remove_orphan_tables: true
+    remove_orphan_tables: false
     side_table_name_prefix: "_stats_"
   # OpenTelemetry metrics receiver
   # Receives OTLP metrics from SurrealDB via gRPC and converts to Prometheus format

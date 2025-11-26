@@ -284,6 +284,13 @@ func convertHistogramUnitsForMetric(metric domain.Metric, originalName string) d
 	}
 }
 
+// histogramData stores the data needed to create a histogram metric
+type histogramData struct {
+	count   uint64
+	sum     float64
+	buckets map[float64]uint64
+}
+
 // HistogramCollector is a custom Prometheus collector for histograms
 // It uses ConstHistogram to allow setting bucket values directly
 type HistogramCollector struct {
@@ -291,8 +298,11 @@ type HistogramCollector struct {
 	description string
 	labelNames  []string
 
-	mu      sync.RWMutex
-	metrics []prometheus.Metric
+	mu sync.RWMutex
+	// metrics stores histogram data keyed by sorted label string for deduplication
+	metrics map[string]*histogramData
+	// labelSets stores the actual labels for each key
+	labelSets map[string]prometheus.Labels
 }
 
 // NewHistogramCollector creates a new histogram collector
@@ -301,8 +311,32 @@ func NewHistogramCollector(name, description string, labelNames []string) *Histo
 		name:        name,
 		description: description,
 		labelNames:  labelNames,
-		metrics:     make([]prometheus.Metric, 0),
+		metrics:     make(map[string]*histogramData),
+		labelSets:   make(map[string]prometheus.Labels),
 	}
+}
+
+// labelsToKey creates a deterministic string key from labels for deduplication
+func labelsToKey(labels map[string]string) string {
+	// Sort keys for consistent ordering
+	keys := make([]string, 0, len(labels))
+	for k := range labels {
+		keys = append(keys, k)
+	}
+	// Sort using simple bubble sort to avoid import
+	for i := 0; i < len(keys)-1; i++ {
+		for j := 0; j < len(keys)-i-1; j++ {
+			if keys[j] > keys[j+1] {
+				keys[j], keys[j+1] = keys[j+1], keys[j]
+			}
+		}
+	}
+	// Build key string
+	var result string
+	for _, k := range keys {
+		result += k + "=" + labels[k] + ","
+	}
+	return result
 }
 
 // Update updates the histogram with new metric data
@@ -313,43 +347,35 @@ func (h *HistogramCollector) Update(metric domain.Metric, labels map[string]stri
 	// Convert labels to prometheus.Labels
 	promLabels := prometheus.Labels(labels)
 
+	// Create a key for this label combination
+	key := labelsToKey(labels)
+
 	// Convert buckets to map
 	buckets := make(map[float64]uint64)
 	for _, bucket := range metric.HistogramData.Buckets {
 		buckets[bucket.UpperBound] = bucket.Count
 	}
 
-	// Create descriptor
-	desc := prometheus.NewDesc(
-		h.name,
-		h.description,
-		nil,
-		promLabels,
-	)
-
-	// Create const histogram
-	histMetric, err := prometheus.NewConstHistogram(
-		desc,
-		metric.HistogramData.Count,
-		metric.HistogramData.Sum,
-		buckets,
-	)
-
-	if err != nil {
-		slog.Error("failed to create const histogram",
-			"metric", h.name,
-			"error", err)
-		return
+	// Store or update the histogram data - this replaces any existing data for the same labels
+	h.metrics[key] = &histogramData{
+		count:   metric.HistogramData.Count,
+		sum:     metric.HistogramData.Sum,
+		buckets: buckets,
 	}
-
-	// Store the metric (replace if exists for same labels)
-	// For simplicity, we'll just append - in production you might want
-	// to implement a more sophisticated cache with expiration
-	h.metrics = append(h.metrics, histMetric)
+	h.labelSets[key] = promLabels
 
 	// Limit the cache size to prevent memory issues
 	if len(h.metrics) > 10000 {
-		h.metrics = h.metrics[len(h.metrics)-5000:]
+		// Remove oldest entries (arbitrary selection since map is unordered)
+		count := 0
+		for k := range h.metrics {
+			if count >= 5000 {
+				break
+			}
+			delete(h.metrics, k)
+			delete(h.labelSets, k)
+			count++
+		}
 	}
 }
 
@@ -364,8 +390,33 @@ func (h *HistogramCollector) Collect(ch chan<- prometheus.Metric) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	for _, metric := range h.metrics {
-		ch <- metric
+	for key, data := range h.metrics {
+		promLabels := h.labelSets[key]
+
+		// Create descriptor
+		desc := prometheus.NewDesc(
+			h.name,
+			h.description,
+			nil,
+			promLabels,
+		)
+
+		// Create const histogram
+		histMetric, err := prometheus.NewConstHistogram(
+			desc,
+			data.count,
+			data.sum,
+			data.buckets,
+		)
+
+		if err != nil {
+			slog.Error("failed to create const histogram",
+				"metric", h.name,
+				"error", err)
+			continue
+		}
+
+		ch <- histMetric
 	}
 }
 

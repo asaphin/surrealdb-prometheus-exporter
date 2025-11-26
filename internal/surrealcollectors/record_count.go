@@ -16,6 +16,7 @@ type RecordCountReader interface {
 // recordCountCollector collects metrics about table record counts
 type recordCountCollector struct {
 	reader RecordCountReader
+	filter TableFilter
 
 	tableInfoCache *tableInfoCache
 
@@ -25,9 +26,10 @@ type recordCountCollector struct {
 }
 
 // NewRecordCountCollector creates a new record count collector
-func NewRecordCountCollector(reader RecordCountReader) prometheus.Collector {
+func NewRecordCountCollector(reader RecordCountReader, filter TableFilter) prometheus.Collector {
 	return &recordCountCollector{
 		reader:         reader,
+		filter:         filter,
 		tableInfoCache: getTableInfoCache(),
 		tableRecordCount: prometheus.NewDesc(
 			"surrealdb_table_record_count",
@@ -61,8 +63,42 @@ func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	// Filter tables based on config if filter is provided
+	var filteredTables []*domain.TableInfo
+	if c.filter != nil {
+		filteredTableIDs := c.filter.FilterTables(tables)
+		if len(filteredTableIDs) == 0 {
+			slog.Debug("No tables match filter patterns for record count")
+			return
+		}
+
+		// Convert filtered TableIdentifiers back to TableInfo
+		tableIDSet := make(map[string]struct{})
+		for _, id := range filteredTableIDs {
+			tableIDSet[id.String()] = struct{}{}
+		}
+
+		for _, table := range tables {
+			tableID := domain.TableIdentifier{
+				Namespace: table.Namespace,
+				Database:  table.Database,
+				Table:     table.Name,
+			}
+			if _, ok := tableIDSet[tableID.String()]; ok {
+				filteredTables = append(filteredTables, table)
+			}
+		}
+	} else {
+		filteredTables = tables
+	}
+
+	if len(filteredTables) == 0 {
+		slog.Debug("No tables to collect record counts for after filtering")
+		return
+	}
+
 	// Fetch record counts
-	metrics, err := c.reader.RecordCount(ctx, tables)
+	metrics, err := c.reader.RecordCount(ctx, filteredTables)
 	if err != nil {
 		slog.Error("unable to collect record counts", "error", err)
 		return

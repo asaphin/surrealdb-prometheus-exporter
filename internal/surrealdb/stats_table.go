@@ -164,7 +164,7 @@ func (m *StatsTableManager) queryStatsTable(tableID domain.TableIdentifier) (*do
 	}
 
 	// Check if result has data
-	if queryResult.Result == nil {
+	if queryResult.Result == nil || len(queryResult.Result) == 0 {
 		return nil, nil
 	}
 
