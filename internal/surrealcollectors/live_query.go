@@ -24,7 +24,6 @@ type LiveQueryCollector struct {
 	tableCache        *tableInfoCache
 	filter            TableFilter
 
-	// Prometheus counters - these accumulate across scrapes
 	operations *prometheus.CounterVec
 }
 
@@ -59,28 +58,24 @@ func (c *LiveQueryCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *LiveQueryCollector) Collect(ch chan<- prometheus.Metric) {
 	//ctx := context.Background() // TODO implement using context
 
-	// Get tables from cache
 	tables := c.tableCache.get()
 	if len(tables) == 0 {
 		slog.Debug("No tables in cache for live query monitoring")
 		return
 	}
 
-	// Filter tables based on config
 	filteredTableIDs := c.filter.FilterTables(tables)
 	if len(filteredTableIDs) == 0 {
 		slog.Debug("No tables match filter patterns")
 		return
 	}
 
-	// Get accumulated metrics from surrealdb layer
 	metrics, err := c.liveQueryProvider.LiveQueryInfo(filteredTableIDs)
 	if err != nil {
 		slog.Error("Failed to get live query metrics", "error", err)
 		return
 	}
 
-	// Increment counters with accumulated counts
 	for _, m := range metrics {
 		if m.Creates > 0 {
 			c.operations.With(prometheus.Labels{
@@ -113,6 +108,5 @@ func (c *LiveQueryCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	// Collect the actual metric values
 	c.operations.Collect(ch)
 }

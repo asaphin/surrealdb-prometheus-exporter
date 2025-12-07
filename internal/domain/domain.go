@@ -524,15 +524,13 @@ func (m MetricType) String() string {
 
 // Metric represents a domain metric independent of OTLP or Prometheus format
 type Metric struct {
-	Name        string
-	Type        MetricType
-	Value       float64
-	Labels      map[string]string
-	Timestamp   time.Time
-	Description string
-	Unit        string
-
-	// For histograms
+	Name          string
+	Type          MetricType
+	Value         float64
+	Labels        map[string]string
+	Timestamp     time.Time
+	Description   string
+	Unit          string
 	HistogramData *HistogramData
 }
 
@@ -546,8 +544,8 @@ type HistogramData struct {
 
 // HistogramBucket represents a single histogram bucket with cumulative count
 type HistogramBucket struct {
-	UpperBound float64 // +Inf for the last bucket
-	Count      uint64  // Cumulative count up to this boundary
+	UpperBound float64
+	Count      uint64
 }
 
 // MetricBatch represents a collection of metrics received together
@@ -590,13 +588,11 @@ func (m *Metric) HasHistogramData() bool {
 
 var invalidLabelCharRegex = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
-// SanitizeLabelName converts OTEL attribute names to valid Prometheus label names
+// SanitizeLabelName converts OTEL attribute names to valid Prometheus label names.
 // Replaces invalid characters with underscores and ensures the name doesn't start with a number
 func SanitizeLabelName(name string) string {
-	// Replace dots and invalid characters with underscores
 	sanitized := invalidLabelCharRegex.ReplaceAllString(name, "_")
 
-	// Ensure it doesn't start with a number
 	if len(sanitized) > 0 && sanitized[0] >= '0' && sanitized[0] <= '9' {
 		sanitized = "_" + sanitized
 	}
@@ -618,10 +614,8 @@ func SanitizeMetricName(name string, strategy string) string {
 
 // underscoreEscaping replaces dots and invalid characters with underscores
 func underscoreEscaping(name string) string {
-	// Replace dots with underscores
 	name = strings.ReplaceAll(name, ".", "_")
 
-	// Replace other invalid characters
 	name = invalidLabelCharRegex.ReplaceAllString(name, "_")
 
 	return name
@@ -629,14 +623,13 @@ func underscoreEscaping(name string) string {
 
 // UnitConversion defines how to convert a unit to Prometheus base units
 type UnitConversion struct {
-	TargetUnit string  // The Prometheus base unit name
-	Multiplier float64 // Multiply value by this to convert
+	TargetUnit string
+	Multiplier float64
 }
 
-// unitConversions maps OTLP units to Prometheus base units
+// unitConversions maps OTLP units to Prometheus base units.
 // Following Prometheus naming conventions: https://prometheus.io/docs/practices/naming/
 var unitConversions = map[string]UnitConversion{
-	// Time units -> seconds
 	"ms":           {TargetUnit: "seconds", Multiplier: 0.001},
 	"milliseconds": {TargetUnit: "seconds", Multiplier: 0.001},
 	"us":           {TargetUnit: "seconds", Multiplier: 0.000001},
@@ -650,7 +643,6 @@ var unitConversions = map[string]UnitConversion{
 	"h":            {TargetUnit: "seconds", Multiplier: 3600},
 	"hours":        {TargetUnit: "seconds", Multiplier: 3600},
 
-	// Size units -> bytes
 	"By":        {TargetUnit: "bytes", Multiplier: 1},
 	"bytes":     {TargetUnit: "bytes", Multiplier: 1},
 	"b":         {TargetUnit: "bytes", Multiplier: 1},
@@ -664,7 +656,6 @@ var unitConversions = map[string]UnitConversion{
 	"gigabytes": {TargetUnit: "bytes", Multiplier: 1024 * 1024 * 1024},
 	"GiBy":      {TargetUnit: "bytes", Multiplier: 1024 * 1024 * 1024},
 
-	// Ratio/percentage units
 	"1":       {TargetUnit: "ratio", Multiplier: 1},
 	"ratio":   {TargetUnit: "ratio", Multiplier: 1},
 	"%":       {TargetUnit: "ratio", Multiplier: 0.01},
@@ -676,23 +667,20 @@ var unitConversions = map[string]UnitConversion{
 // what unit label the source may incorrectly send.
 // Reference: https://opentelemetry.io/docs/specs/semconv/http/http-metrics/
 var metricsAlreadyInBaseUnits = map[string]string{
-	// HTTP metrics - OTEL specifies these are in bytes
 	"http.server.request.size":  "bytes",
 	"http.server.response.size": "bytes",
 	"http.client.request.size":  "bytes",
 	"http.client.response.size": "bytes",
-	// RPC metrics - OTEL specifies these are in bytes
-	"rpc.server.request.size":  "bytes",
-	"rpc.server.response.size": "bytes",
-	"rpc.client.request.size":  "bytes",
-	"rpc.client.response.size": "bytes",
+	"rpc.server.request.size":   "bytes",
+	"rpc.server.response.size":  "bytes",
+	"rpc.client.request.size":   "bytes",
+	"rpc.client.response.size":  "bytes",
 }
 
 // GetEffectiveUnit returns the correct unit for a metric, handling cases where
 // the source sends an incorrect unit label. For known OTEL metrics, we use
 // the unit specified by OTEL semantic conventions instead of the declared unit.
 func GetEffectiveUnit(metricName, declaredUnit string) string {
-	// Check if this metric has a known correct unit per OTEL conventions
 	if correctUnit, ok := metricsAlreadyInBaseUnits[metricName]; ok {
 		return correctUnit
 	}
@@ -747,18 +735,15 @@ func GetTargetUnitForMetric(metricName, declaredUnit string) string {
 	return effectiveUnit
 }
 
-// AddSuffixByType adds appropriate Prometheus suffix based on metric type and unit
+// AddSuffixByType adds appropriate Prometheus suffix based on metric type and unit.
 // It converts units to Prometheus base units (e.g., ms -> seconds, mb -> bytes)
 func AddSuffixByType(name string, metricType MetricType, unit string) string {
-	// Convert to Prometheus base unit
 	targetUnit := GetTargetUnit(unit)
 
-	// Add unit suffix if present and not already included
 	if targetUnit != "" && !strings.Contains(name, targetUnit) {
 		name = name + "_" + targetUnit
 	}
 
-	// Add type suffix for counters
 	switch metricType {
 	case MetricTypeCounter:
 		if !strings.HasSuffix(name, "_total") {
@@ -771,15 +756,12 @@ func AddSuffixByType(name string, metricType MetricType, unit string) string {
 
 // AddSuffixByTypeForMetric is like AddSuffixByType but handles metric-specific unit corrections
 func AddSuffixByTypeForMetric(name, originalMetricName string, metricType MetricType, declaredUnit string) string {
-	// Get the correct target unit considering metric-specific overrides
 	targetUnit := GetTargetUnitForMetric(originalMetricName, declaredUnit)
 
-	// Add unit suffix if present and not already included
 	if targetUnit != "" && !strings.Contains(name, targetUnit) {
 		name = name + "_" + targetUnit
 	}
 
-	// Add type suffix for counters
 	switch metricType {
 	case MetricTypeCounter:
 		if !strings.HasSuffix(name, "_total") {
@@ -794,7 +776,6 @@ func AddSuffixByTypeForMetric(name, originalMetricName string, metricType Metric
 func BucketsFromBounds(bounds []float64, counts []uint64) []HistogramBucket {
 	buckets := make([]HistogramBucket, 0, len(bounds)+1)
 
-	// Create buckets for each bound
 	for i := 0; i < len(bounds) && i < len(counts); i++ {
 		buckets = append(buckets, HistogramBucket{
 			UpperBound: bounds[i],
@@ -802,7 +783,6 @@ func BucketsFromBounds(bounds []float64, counts []uint64) []HistogramBucket {
 		})
 	}
 
-	// Add +Inf bucket if counts has one more element than bounds
 	if len(counts) > len(bounds) {
 		buckets = append(buckets, HistogramBucket{
 			UpperBound: math.Inf(1),

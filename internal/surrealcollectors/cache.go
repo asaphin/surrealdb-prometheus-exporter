@@ -40,7 +40,6 @@ func (c *tableInfoCache) get() []*domain.TableInfo {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Returns defensive cache copy
 	result := make([]*domain.TableInfo, len(c.tables))
 	copy(result, c.tables)
 	return result

@@ -84,13 +84,11 @@ func NewInfoReader(cfg Config, conn ConnectionManager) (*infoReader, error) {
 func (r *infoReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error) {
 	start := time.Now()
 
-	// Get root level information
 	rootData, err := r.fetchRootInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch root info: %w", err)
 	}
 
-	// Initialize result structure
 	result := &domain.SurrealDBInfo{
 		System: domain.SystemMetrics{
 			AvailableParallelism: rootData.System.AvailableParallelism,
@@ -107,13 +105,11 @@ func (r *infoReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error) {
 		Nodes:        len(rootData.Nodes),
 	}
 
-	// Get all namespace names
 	namespaceNames := make([]string, 0, len(rootData.Namespaces))
 	for name := range rootData.Namespaces {
 		namespaceNames = append(namespaceNames, name)
 	}
 
-	// Fetch all namespaces in parallel
 	if len(namespaceNames) > 0 {
 		namespaces, err := r.fetchNamespacesParallel(ctx, namespaceNames)
 		if err != nil {
@@ -162,7 +158,6 @@ func (r *infoReader) fetchNamespacesParallel(ctx context.Context, namespaceNames
 	resultChan := make(chan nsResult, len(namespaceNames))
 	var wg sync.WaitGroup
 
-	// Launch parallel goroutines for each namespace
 	for _, nsName := range namespaceNames {
 		wg.Add(1)
 		go func(name string) {
@@ -172,13 +167,11 @@ func (r *infoReader) fetchNamespacesParallel(ctx context.Context, namespaceNames
 		}(nsName)
 	}
 
-	// Wait for all goroutines to complete
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	// Collect results
 	namespaces := make(map[string]*domain.NamespaceInfo)
 	var errs []error
 
@@ -199,13 +192,11 @@ func (r *infoReader) fetchNamespacesParallel(ctx context.Context, namespaceNames
 
 // fetchNamespace retrieves information for a single namespace and its databases
 func (r *infoReader) fetchNamespace(ctx context.Context, namespaceName string) (*domain.NamespaceInfo, error) {
-	// Get root-level connection (both ns and db empty)
 	db, err := r.conn.Get(ctx, "", "")
 	if err != nil {
 		return nil, fmt.Errorf("could not get DB connection: %w", err)
 	}
 
-	// Execute USE NS followed by INFO FOR NS
 	query := fmt.Sprintf("USE NS %s; INFO FOR NS;", namespaceName)
 	results, err := sdk.Query[*namespaceInfo](ctx, db, query, nil)
 	if err != nil {
@@ -216,7 +207,6 @@ func (r *infoReader) fetchNamespace(ctx context.Context, namespaceName string) (
 		return nil, errors.New("INFO FOR NAMESPACE returned insufficient results")
 	}
 
-	// The INFO FOR NS result is in the second element (index 1)
 	nsResult := (*results)[1]
 	if nsResult.Status != "OK" {
 		return nil, fmt.Errorf("INFO FOR NAMESPACE returned %s status: %w", nsResult.Status, nsResult.Error)
@@ -230,13 +220,11 @@ func (r *infoReader) fetchNamespace(ctx context.Context, namespaceName string) (
 		Accesses:  len(nsData.Accesses),
 	}
 
-	// Get all database names
 	databaseNames := make([]string, 0, len(nsData.Databases))
 	for name := range nsData.Databases {
 		databaseNames = append(databaseNames, name)
 	}
 
-	// Fetch all databases in parallel
 	if len(databaseNames) > 0 {
 		databases, err := r.fetchDatabasesParallel(ctx, namespaceName, databaseNames)
 		if err != nil {
@@ -259,7 +247,6 @@ func (r *infoReader) fetchDatabasesParallel(ctx context.Context, namespace strin
 	resultChan := make(chan dbResult, len(databaseNames))
 	var wg sync.WaitGroup
 
-	// Launch parallel goroutines for each database
 	for _, dbName := range databaseNames {
 		wg.Add(1)
 		go func(name string) {
@@ -269,13 +256,11 @@ func (r *infoReader) fetchDatabasesParallel(ctx context.Context, namespace strin
 		}(dbName)
 	}
 
-	// Wait for all goroutines to complete
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	// Collect results
 	databases := make(map[string]*domain.DatabaseInfo)
 	var errs []error
 
@@ -331,16 +316,13 @@ func (r *infoReader) fetchDatabase(ctx context.Context, namespace, databaseName 
 		Params:    len(dbData.Params),
 	}
 
-	// Get all table names, FILTERING OUT STATS TABLES
 	tableNames := make([]string, 0, len(dbData.Tables))
 	for name := range dbData.Tables {
-		// Skip stats tables (internal tables created by exporter)
 		if !strings.HasPrefix(name, r.cfg.StatsTableNamePrefix()) {
 			tableNames = append(tableNames, name)
 		}
 	}
 
-	// Fetch all tables in parallel
 	if len(tableNames) > 0 {
 		tables, err := r.fetchTablesParallel(ctx, namespace, databaseName, tableNames)
 		if err != nil {
@@ -363,7 +345,6 @@ func (r *infoReader) fetchTablesParallel(ctx context.Context, namespace, databas
 	resultChan := make(chan tblResult, len(tableNames))
 	var wg sync.WaitGroup
 
-	// Launch parallel goroutines for each table
 	for _, tblName := range tableNames {
 		wg.Add(1)
 		go func(name string) {
@@ -373,13 +354,11 @@ func (r *infoReader) fetchTablesParallel(ctx context.Context, namespace, databas
 		}(tblName)
 	}
 
-	// Wait for all goroutines to complete
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	// Collect results
 	tables := make(map[string]*domain.TableInfo)
 	var errs []error
 
@@ -432,13 +411,11 @@ func (r *infoReader) fetchTable(ctx context.Context, namespace, database, tableN
 		Tables:    len(tblData.Tables),
 	}
 
-	// Get all index names
 	indexNames := make([]string, 0, len(tblData.Indexes))
 	for name := range tblData.Indexes {
 		indexNames = append(indexNames, name)
 	}
 
-	// Fetch all indexes in parallel
 	if len(indexNames) > 0 {
 		indexes, err := r.fetchIndexesParallel(ctx, namespace, database, tableName, indexNames)
 		if err != nil {
@@ -461,7 +438,6 @@ func (r *infoReader) fetchIndexesParallel(ctx context.Context, namespace, databa
 	resultChan := make(chan idxResult, len(indexNames))
 	var wg sync.WaitGroup
 
-	// Launch parallel goroutines for each index
 	for _, idxName := range indexNames {
 		wg.Add(1)
 		go func(name string) {
@@ -471,13 +447,11 @@ func (r *infoReader) fetchIndexesParallel(ctx context.Context, namespace, databa
 		}(idxName)
 	}
 
-	// Wait for all goroutines to complete
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	// Collect results
 	indexes := make(map[string]*domain.IndexInfo)
 	var errs []error
 

@@ -24,27 +24,22 @@ func NewOTELGRPCServer(processor processor.Processor) *OTELGRPCServer {
 
 // Export handles the gRPC export request for metrics
 func (s *OTELGRPCServer) Export(ctx context.Context, req pmetricotlp.ExportRequest) (pmetricotlp.ExportResponse, error) {
-	// Extract metrics from the request
 	metrics := req.Metrics()
 
-	// Convert to domain model
 	batch := ConvertPmetricToDomain(metrics)
 
 	slog.Debug("received OTLP metrics via gRPC",
 		"metric_count", batch.Count(),
 		"resource_attrs", len(batch.ResourceAttrs))
 
-	// Pass to consumer for processing
 	if err := s.processor.Process(ctx, batch); err != nil {
 		slog.Error("failed to consume metrics", "error", err)
 		return pmetricotlp.NewExportResponse(), err
 	}
 
-	// Return success response
 	return pmetricotlp.NewExportResponse(), nil
 }
 
-// RegisterWith registers this server with a gRPC server
 func (s *OTELGRPCServer) RegisterWith(server *grpc.Server) {
 	pmetricotlp.RegisterGRPCServer(server, s)
 }

@@ -26,19 +26,16 @@ func NewTableFilter(includePatterns, excludePatterns []string) *tableFilter {
 func (f *tableFilter) shouldMonitor(tableID domain.TableIdentifier) bool {
 	identifier := tableID.String()
 
-	// If no patterns, monitor everything
 	if !f.hasIncludes && len(f.excludePatterns) == 0 {
 		return true
 	}
 
-	// Check excludes first
 	for _, pattern := range f.excludePatterns {
 		if matchesPattern(identifier, pattern) {
 			return false
 		}
 	}
 
-	// If includes specified, must match at least one
 	if f.hasIncludes {
 		for _, pattern := range f.includePatterns {
 			if matchesPattern(identifier, pattern) {

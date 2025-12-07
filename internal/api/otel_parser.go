@@ -11,7 +11,6 @@ import (
 )
 
 // ConvertPmetricToDomain converts OTLP pmetric.Metrics to domain.MetricBatch
-// This function only performs parsing and conversion - no business logic
 func ConvertPmetricToDomain(md pmetric.Metrics) domain.MetricBatch {
 	batch := domain.MetricBatch{
 		ReceivedAt:    time.Now(),
@@ -24,23 +23,19 @@ func ConvertPmetricToDomain(md pmetric.Metrics) domain.MetricBatch {
 		rm := rms.At(i)
 		resource := rm.Resource()
 
-		// Extract resource attributes
 		resource.Attributes().Range(func(k string, v pcommon.Value) bool {
 			batch.ResourceAttrs[k] = v.AsString()
 			return true
 		})
 
-		// Process scope metrics
 		ilms := rm.ScopeMetrics()
 		for j := 0; j < ilms.Len(); j++ {
 			ilm := ilms.At(j)
 
-			// Process each metric
 			metrics := ilm.Metrics()
 			for k := 0; k < metrics.Len(); k++ {
 				metric := metrics.At(k)
 
-				// Convert based on metric type
 				switch metric.Type() {
 				case pmetric.MetricTypeGauge:
 					batch.Metrics = append(batch.Metrics, convertGauge(metric)...)
@@ -75,7 +70,6 @@ func convertGauge(metric pmetric.Metric) []domain.Metric {
 			Timestamp:   dp.Timestamp().AsTime(),
 		}
 
-		// Extract value based on type
 		switch dp.ValueType() {
 		case pmetric.NumberDataPointValueTypeDouble:
 			m.Value = dp.DoubleValue()
@@ -89,7 +83,7 @@ func convertGauge(metric pmetric.Metric) []domain.Metric {
 	return metrics
 }
 
-// convertSum converts OTLP sum metrics to domain metrics
+// convertSum converts OTLP sum metrics to domain metrics.
 // Determines if it's a counter (monotonic) or gauge (non-monotonic)
 func convertSum(metric pmetric.Metric) []domain.Metric {
 	var metrics []domain.Metric
@@ -98,7 +92,6 @@ func convertSum(metric pmetric.Metric) []domain.Metric {
 	for i := 0; i < sum.DataPoints().Len(); i++ {
 		dp := sum.DataPoints().At(i)
 
-		// Determine metric type based on monotonicity
 		metricType := domain.MetricTypeGauge
 		if sum.IsMonotonic() {
 			metricType = domain.MetricTypeCounter
@@ -113,7 +106,6 @@ func convertSum(metric pmetric.Metric) []domain.Metric {
 			Timestamp:   dp.Timestamp().AsTime(),
 		}
 
-		// Extract value based on type
 		switch dp.ValueType() {
 		case pmetric.NumberDataPointValueTypeDouble:
 			m.Value = dp.DoubleValue()
@@ -142,15 +134,11 @@ func convertHistogram(metric pmetric.Metric) []domain.Metric {
 			CreatedTime: dp.StartTimestamp().AsTime(),
 		}
 
-		// Convert buckets - OTLP uses explicit bounds with per-bucket counts
-		// Prometheus requires CUMULATIVE counts, so we need to accumulate
 		bounds := dp.ExplicitBounds()
 		counts := dp.BucketCounts()
 
-		// Accumulate counts to convert from per-bucket to cumulative
 		var cumulativeCount uint64 = 0
 
-		// Create buckets for each explicit bound with cumulative counts
 		for j := 0; j < bounds.Len(); j++ {
 			cumulativeCount += counts.At(j)
 			histData.Buckets = append(histData.Buckets, domain.HistogramBucket{
@@ -159,7 +147,6 @@ func convertHistogram(metric pmetric.Metric) []domain.Metric {
 			})
 		}
 
-		// Add +Inf bucket if counts has one more element than bounds
 		if counts.Len() > bounds.Len() {
 			cumulativeCount += counts.At(counts.Len() - 1)
 			histData.Buckets = append(histData.Buckets, domain.HistogramBucket{
@@ -192,7 +179,6 @@ func convertSummary(metric pmetric.Metric) []domain.Metric {
 	for i := 0; i < summary.DataPoints().Len(); i++ {
 		dp := summary.DataPoints().At(i)
 
-		// Create a gauge-like metric for count
 		countMetric := domain.Metric{
 			Name:        metric.Name() + "_count",
 			Type:        domain.MetricTypeGauge,
@@ -204,7 +190,6 @@ func convertSummary(metric pmetric.Metric) []domain.Metric {
 		}
 		metrics = append(metrics, countMetric)
 
-		// Create a gauge-like metric for sum
 		sumMetric := domain.Metric{
 			Name:        metric.Name() + "_sum",
 			Type:        domain.MetricTypeGauge,
@@ -216,7 +201,6 @@ func convertSummary(metric pmetric.Metric) []domain.Metric {
 		}
 		metrics = append(metrics, sumMetric)
 
-		// Create metrics for quantiles
 		quantiles := dp.QuantileValues()
 		for j := 0; j < quantiles.Len(); j++ {
 			qv := quantiles.At(j)

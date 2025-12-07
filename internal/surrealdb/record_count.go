@@ -38,7 +38,6 @@ func (r *recordCountReader) RecordCount(ctx context.Context, tables []*domain.Ta
 		}, nil
 	}
 
-	// Fetch all table record counts in parallel
 	tableCounts, err := r.fetchRecordCountsParallel(ctx, tables)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch record counts: %w", err)
@@ -60,7 +59,6 @@ func (r *recordCountReader) fetchRecordCountsParallel(ctx context.Context, table
 	resultChan := make(chan countResult, len(tables))
 	var wg sync.WaitGroup
 
-	// Launch parallel goroutines for each table
 	for _, table := range tables {
 		wg.Add(1)
 		go func(tbl *domain.TableInfo) {
@@ -70,13 +68,11 @@ func (r *recordCountReader) fetchRecordCountsParallel(ctx context.Context, table
 		}(table)
 	}
 
-	// Wait for all goroutines to complete
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	// Collect results
 	tableCounts := make([]*domain.TableRecordCount, 0, len(tables))
 	var errs []error
 

@@ -21,8 +21,7 @@ type LiveQueryManager struct {
 	reconnectDelay       time.Duration
 	maxReconnectAttempts int
 
-	// Current state
-	activeQueries map[string]*liveQueryState // key: tableID
+	activeQueries map[string]*liveQueryState
 	mu            sync.RWMutex
 
 	ctx    context.Context
@@ -58,13 +57,11 @@ func NewLiveQueryManager(
 	}
 }
 
-// LiveQueryInfo returns accumulated metrics and reconciles live queries
+// LiveQueryInfo returns accumulated metrics and reconciles live queries.
 // This is the main entry point called by the collector on each scrape
 func (m *LiveQueryManager) LiveQueryInfo(tableIDs []domain.TableIdentifier) ([]*domain.TableOperationMetrics, error) {
-	// Get accumulated metrics
 	metrics := m.accumulator.GetAndClear()
 
-	// Reconcile live queries asynchronously
 	go m.reconcileQueries(tableIDs)
 
 	return metrics, nil
@@ -83,13 +80,11 @@ func (m *LiveQueryManager) reconcileQueries(desiredTables []domain.TableIdentifi
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Build set of desired tables
 	desired := make(map[string]domain.TableIdentifier)
 	for _, table := range desiredTables {
 		desired[table.String()] = table
 	}
 
-	// Find queries to remove (active but not desired)
 	for tableKey, state := range m.activeQueries {
 		if _, exists := desired[tableKey]; !exists {
 			slog.Info("Stopping live query for removed table", "table", tableKey)
@@ -98,7 +93,6 @@ func (m *LiveQueryManager) reconcileQueries(desiredTables []domain.TableIdentifi
 		}
 	}
 
-	// Find queries to add (desired but not active)
 	for tableKey, tableID := range desired {
 		if _, exists := m.activeQueries[tableKey]; !exists {
 			slog.Info("Starting live query for new table", "table", tableKey)
@@ -138,7 +132,6 @@ func (m *LiveQueryManager) manageLiveQuery(tableID domain.TableIdentifier) {
 		if err := m.runLiveQuery(tableID); err != nil {
 			slog.Error("Live query error", "table", tableID.String(), "error", err)
 
-			// Remove from active queries if context was cancelled
 			if m.ctx.Err() != nil {
 				m.mu.Lock()
 				delete(m.activeQueries, tableID.String())
@@ -148,7 +141,6 @@ func (m *LiveQueryManager) manageLiveQuery(tableID domain.TableIdentifier) {
 			continue
 		}
 
-		// Query ended cleanly (context cancelled)
 		m.mu.Lock()
 		delete(m.activeQueries, tableID.String())
 		m.mu.Unlock()
@@ -161,13 +153,11 @@ func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 	ctx, cancel := context.WithCancel(m.ctx)
 	defer cancel()
 
-	// Get database connection
 	db, err := m.connManager.Get(ctx, tableID.Namespace, tableID.Database)
 	if err != nil {
 		return fmt.Errorf("failed to get connection: %w", err)
 	}
 
-	// Create live query
 	live, err := sdk.Live(ctx, db, models.Table(tableID.Table), false)
 	if err != nil {
 		return fmt.Errorf("failed to create live query: %w", err)
@@ -180,7 +170,6 @@ func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 		"table", tableID.Table,
 		"live_id", liveID)
 
-	// Store active query state
 	m.mu.Lock()
 	m.activeQueries[tableID.String()] = &liveQueryState{
 		tableID:   tableID,
@@ -190,7 +179,6 @@ func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 	}
 	m.mu.Unlock()
 
-	// Get notifications channel
 	notifications, err := db.LiveNotifications(liveID)
 	if err != nil {
 		return fmt.Errorf("failed to get notifications: %w", err)
@@ -200,7 +188,6 @@ func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 		return fmt.Errorf("notifications channel is nil")
 	}
 
-	// Process notifications
 	for {
 		select {
 		case <-ctx.Done():
@@ -220,7 +207,6 @@ func (m *LiveQueryManager) processNotification(
 	tableID domain.TableIdentifier,
 	notification sconn.Notification,
 ) {
-	// Determine action
 	var action domain.OperationAction
 	switch notification.Action {
 	case sconn.CreateAction:
@@ -238,13 +224,9 @@ func (m *LiveQueryManager) processNotification(
 		return
 	}
 
-	// Detect operation type from actual data.
-	// diff=false => Result is usually map[string]any
 	opType := domain.OperationTypeUnknown
 	switch res := notification.Result.(type) {
 	case map[string]any:
-		// Assuming DetectFromRecord returns domain.OperationType.
-		// If it returns string, cast: domain.OperationType(...)
 		opType = m.detector.DetectFromRecord(res)
 	case nil:
 		slog.Debug("Live notification with nil result",
@@ -259,7 +241,6 @@ func (m *LiveQueryManager) processNotification(
 		)
 	}
 
-	// Record in accumulator
 	m.accumulator.Record(tableID, opType, action)
 
 	slog.Debug("Operation recorded",
@@ -285,34 +266,28 @@ func (d *OperationTypeDetector) DetectFromRecord(record interface{}) domain.Oper
 		return domain.OperationTypeUnknown
 	}
 
-	// Try to convert to map for analysis
 	recordMap, ok := record.(map[string]interface{})
 	if !ok {
 		return domain.OperationTypeUnknown
 	}
 
-	// Check for graph structure (edges have 'in' and 'out' fields)
 	if d.isGraphRecord(recordMap) {
 		return domain.OperationTypeGraph
 	}
 
-	// Check for key-value structure (simple, typically just id + one value)
 	if d.isKeyValueRecord(recordMap) {
 		return domain.OperationTypeKeyValue
 	}
 
-	// Check for relational structure (flat, multiple scalar fields)
 	if d.isRelationalRecord(recordMap) {
 		return domain.OperationTypeRelational
 	}
 
-	// Default to document (nested objects, arrays, etc.)
 	return domain.OperationTypeDocument
 }
 
 // isGraphRecord checks if record has graph edge characteristics
 func (d *OperationTypeDetector) isGraphRecord(record map[string]interface{}) bool {
-	// Graph edges in SurrealDB have 'in' and 'out' fields
 	hasIn := false
 	hasOut := false
 
@@ -330,8 +305,6 @@ func (d *OperationTypeDetector) isGraphRecord(record map[string]interface{}) boo
 
 // isKeyValueRecord checks if record has key-value characteristics
 func (d *OperationTypeDetector) isKeyValueRecord(record map[string]interface{}) bool {
-	// Key-value records are simple: typically just id + 1-2 value fields
-	// Ignore 'id' field in count
 	fieldCount := 0
 	for key := range record {
 		if key != "id" {
@@ -339,13 +312,11 @@ func (d *OperationTypeDetector) isKeyValueRecord(record map[string]interface{}) 
 		}
 	}
 
-	// If only 1-2 fields (besides id), likely key-value
 	return fieldCount <= 2 && fieldCount > 0
 }
 
 // isRelationalRecord checks if record has relational characteristics
 func (d *OperationTypeDetector) isRelationalRecord(record map[string]interface{}) bool {
-	// Relational records have multiple scalar fields
 	scalarCount := 0
 	complexCount := 0
 
@@ -362,13 +333,12 @@ func (d *OperationTypeDetector) isRelationalRecord(record map[string]interface{}
 		}
 	}
 
-	// If mostly scalar fields and multiple fields, likely relational
 	return scalarCount >= 3 && complexCount <= 1
 }
 
 // OperationAccumulator thread-safely accumulates operation counts
 type OperationAccumulator struct {
-	metrics map[string]*domain.TableOperationMetrics // key: tableID:operationType
+	metrics map[string]*domain.TableOperationMetrics
 	mu      sync.RWMutex
 }
 
@@ -418,7 +388,6 @@ func (a *OperationAccumulator) GetAndClear() []*domain.TableOperationMetrics {
 
 	result := make([]*domain.TableOperationMetrics, 0, len(a.metrics))
 	for _, m := range a.metrics {
-		// Create a copy
 		metricsCopy := &domain.TableOperationMetrics{
 			Namespace:     m.Namespace,
 			Database:      m.Database,
@@ -431,7 +400,6 @@ func (a *OperationAccumulator) GetAndClear() []*domain.TableOperationMetrics {
 		result = append(result, metricsCopy)
 	}
 
-	// Clear the accumulator
 	a.metrics = make(map[string]*domain.TableOperationMetrics)
 
 	return result

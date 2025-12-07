@@ -15,25 +15,26 @@ type Processor interface {
 	Process(ctx context.Context, batch domain.MetricBatch) error
 }
 
-// ProcessorChain chains multiple processors together
-type ProcessorChain struct {
+// Chain chains multiple processors together
+type Chain struct {
 	processors []Processor
 }
 
-// NewProcessorChain creates a new processor chain
-func NewProcessorChain(processors ...Processor) *ProcessorChain {
-	return &ProcessorChain{
+// NewChain creates a new processor chain
+func NewChain(processors ...Processor) *Chain {
+	return &Chain{
 		processors: processors,
 	}
 }
 
 // Process processes a batch through all processors in the chain
-func (pc *ProcessorChain) Process(ctx context.Context, batch domain.MetricBatch) error {
-	for _, processor := range pc.processors {
+func (c *Chain) Process(ctx context.Context, batch domain.MetricBatch) error {
+	for _, processor := range c.processors {
 		if err := processor.Process(ctx, batch); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -63,67 +64,60 @@ func NewBatchProcessor(conv *converter.Converter, batchSize int, batchTimeout ti
 		flushChan: make(chan struct{}, 1),
 	}
 
-	// Start background flusher
 	go bp.backgroundFlusher()
 
 	return bp
 }
 
 // Process adds metrics to the batch and flushes if necessary
-func (bp *BatchProcessor) Process(ctx context.Context, batch domain.MetricBatch) error {
-	bp.mu.Lock()
-	defer bp.mu.Unlock()
+func (p *BatchProcessor) Process(ctx context.Context, batch domain.MetricBatch) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	// Add metrics to current batch
-	bp.currentBatch.Metrics = append(bp.currentBatch.Metrics, batch.Metrics...)
+	p.currentBatch.Metrics = append(p.currentBatch.Metrics, batch.Metrics...)
 
-	// Merge resource attributes
 	for k, v := range batch.ResourceAttrs {
-		bp.currentBatch.ResourceAttrs[k] = v
+		p.currentBatch.ResourceAttrs[k] = v
 	}
 
-	// Update received time if not set
-	if bp.currentBatch.ReceivedAt.IsZero() {
-		bp.currentBatch.ReceivedAt = batch.ReceivedAt
+	if p.currentBatch.ReceivedAt.IsZero() {
+		p.currentBatch.ReceivedAt = batch.ReceivedAt
 	}
 
-	// Reset flush timer
-	if bp.flushTimer != nil {
-		bp.flushTimer.Stop()
+	if p.flushTimer != nil {
+		p.flushTimer.Stop()
 	}
-	bp.flushTimer = time.AfterFunc(bp.batchTimeout, func() {
+
+	p.flushTimer = time.AfterFunc(p.batchTimeout, func() {
 		select {
-		case bp.flushChan <- struct{}{}:
+		case p.flushChan <- struct{}{}:
 		default:
 		}
 	})
 
-	// Check if batch is full
-	if len(bp.currentBatch.Metrics) >= bp.batchSize {
-		return bp.flushLocked()
+	if len(p.currentBatch.Metrics) >= p.batchSize {
+		return p.flushLocked()
 	}
 
 	return nil
 }
 
 // flushLocked flushes the current batch (caller must hold lock)
-func (bp *BatchProcessor) flushLocked() error {
-	if len(bp.currentBatch.Metrics) == 0 {
+func (p *BatchProcessor) flushLocked() error {
+	if len(p.currentBatch.Metrics) == 0 {
 		return nil
 	}
 
 	slog.Debug("flushing metric batch",
-		"count", len(bp.currentBatch.Metrics))
+		"count", len(p.currentBatch.Metrics))
 
-	// Convert batch to Prometheus format
-	if err := bp.converter.Convert(bp.currentBatch); err != nil {
+	if err := p.converter.Convert(p.currentBatch); err != nil {
 		slog.Error("failed to convert batch", "error", err)
 		// Don't return error - just log it and continue
 	}
 
-	// Reset batch
-	bp.currentBatch = domain.MetricBatch{
-		Metrics:       make([]domain.Metric, 0, bp.batchSize),
+	p.currentBatch = domain.MetricBatch{
+		Metrics:       make([]domain.Metric, 0, p.batchSize),
 		ResourceAttrs: make(map[string]string),
 	}
 
@@ -131,30 +125,30 @@ func (bp *BatchProcessor) flushLocked() error {
 }
 
 // Flush flushes the current batch
-func (bp *BatchProcessor) Flush() error {
-	bp.mu.Lock()
-	defer bp.mu.Unlock()
-	return bp.flushLocked()
+func (p *BatchProcessor) Flush() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.flushLocked()
 }
 
 // backgroundFlusher periodically flushes batches
-func (bp *BatchProcessor) backgroundFlusher() {
+func (p *BatchProcessor) backgroundFlusher() {
 	for {
 		select {
-		case <-bp.flushChan:
-			bp.mu.Lock()
-			bp.flushLocked()
-			bp.mu.Unlock()
-		case <-bp.stopChan:
+		case <-p.flushChan:
+			p.mu.Lock()
+			p.flushLocked()
+			p.mu.Unlock()
+		case <-p.stopChan:
 			return
 		}
 	}
 }
 
 // Stop stops the batch processor
-func (bp *BatchProcessor) Stop() {
-	close(bp.stopChan)
-	bp.Flush()
+func (p *BatchProcessor) Stop() {
+	close(p.stopChan)
+	p.Flush()
 }
 
 // DirectProcessor processes metrics immediately without batching

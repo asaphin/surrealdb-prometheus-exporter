@@ -13,7 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Allowed values for configuration fields
 const (
 	DefaultClusterName    = "default-cluster"
 	DefaultStorageEngine  = "memory"
@@ -34,10 +33,8 @@ var (
 	AllowedStorageEngines  = []string{"memory", "rocksdb", "tikv"}
 	AllowedDeploymentModes = []string{"single", "distributed", "cloud"}
 
-	// metricsPathRegex validates metrics path format
 	metricsPathRegex = regexp.MustCompile(`^/[a-zA-Z0-9_\-/]*$`)
 
-	// tableFilterPatternRegex validates table filter patterns (namespace:database:table with wildcards)
 	tableFilterPatternRegex = regexp.MustCompile(`^[a-zA-Z0-9_*]+:[a-zA-Z0-9_*]+:[a-zA-Z0-9_*]+$`)
 )
 
@@ -61,8 +58,6 @@ type config struct {
 	Collectors collectorsConfig `yaml:"collectors"`
 	Logging    loggingConfig    `yaml:"logging"`
 }
-
-// all nested types are also unexported, but their fields stay exported
 
 type exporterConfig struct {
 	Port        int    `yaml:"port"`
@@ -134,7 +129,6 @@ type loggingConfig struct {
 	CustomAttributes map[string]any `yaml:"custom_attributes"`
 }
 
-// Load is the only exported symbol
 func Load(path string) (*config, error) {
 	cfg := defaultConfig()
 
@@ -151,7 +145,6 @@ func Load(path string) (*config, error) {
 
 	applyEnvironmentOverrides(cfg)
 
-	// Validate and fix configuration with warnings
 	validateAndFix(cfg)
 
 	return cfg, nil
@@ -166,7 +159,6 @@ func validateAndFix(cfg *config) {
 
 // validateExporterConfig validates exporter settings
 func validateExporterConfig(cfg *config) {
-	// Validate port range
 	if cfg.Exporter.Port < MinPort || cfg.Exporter.Port > MaxPort {
 		slog.Warn("exporter port is out of valid range, using default",
 			"provided", cfg.Exporter.Port,
@@ -179,7 +171,6 @@ func validateExporterConfig(cfg *config) {
 			"privileged_range", fmt.Sprintf("%d-%d", MinPort, PrivilegedPort-1))
 	}
 
-	// Validate metrics path
 	if cfg.Exporter.MetricsPath == "" {
 		slog.Warn("metrics_path is empty, using default",
 			"default", DefaultMetricsPath)
@@ -202,14 +193,12 @@ func validateExporterConfig(cfg *config) {
 
 // validateSurrealDBConfig validates SurrealDB connection settings
 func validateSurrealDBConfig(cfg *config) {
-	// Validate cluster_name
 	if strings.TrimSpace(cfg.SurrealDB.ClusterName) == "" {
 		slog.Warn("cluster_name is empty, using default value",
 			"default", DefaultClusterName)
 		cfg.SurrealDB.ClusterName = DefaultClusterName
 	}
 
-	// Validate storage_engine
 	if strings.TrimSpace(cfg.SurrealDB.StorageEngine) == "" {
 		slog.Warn("storage_engine is empty, using default value",
 			"default", DefaultStorageEngine,
@@ -223,7 +212,6 @@ func validateSurrealDBConfig(cfg *config) {
 		cfg.SurrealDB.StorageEngine = DefaultStorageEngine
 	}
 
-	// Validate deployment_mode
 	if strings.TrimSpace(cfg.SurrealDB.DeploymentMode) == "" {
 		slog.Warn("deployment_mode is empty, using default value",
 			"default", DefaultDeploymentMode,
@@ -237,7 +225,6 @@ func validateSurrealDBConfig(cfg *config) {
 		cfg.SurrealDB.DeploymentMode = DefaultDeploymentMode
 	}
 
-	// Validate timeout
 	if cfg.SurrealDB.Timeout < MinTimeout {
 		slog.Warn("surrealdb timeout is too short, using minimum value",
 			"provided", cfg.SurrealDB.Timeout,
@@ -253,26 +240,21 @@ func validateSurrealDBConfig(cfg *config) {
 
 // validateCollectorsConfig validates collectors settings
 func validateCollectorsConfig(cfg *config) {
-	// Validate live_query collector - only available for single deployment_mode
 	if cfg.Collectors.LiveQuery.Enabled && cfg.SurrealDB.DeploymentMode != "single" {
 		slog.Warn("live_query collector is only available for 'single' deployment_mode, disabling it",
 			"current_deployment_mode", cfg.SurrealDB.DeploymentMode)
 		cfg.Collectors.LiveQuery.Enabled = false
 	}
 
-	// Validate table filter patterns for live_query
 	validateTablePatterns("live_query.tables.include", &cfg.Collectors.LiveQuery.Tables.Include)
 	validateTablePatterns("live_query.tables.exclude", &cfg.Collectors.LiveQuery.Tables.Exclude)
 
-	// Validate table filter patterns for stats_table
 	validateTablePatterns("stats_table.tables.include", &cfg.Collectors.StatsTable.Tables.Include)
 	validateTablePatterns("stats_table.tables.exclude", &cfg.Collectors.StatsTable.Tables.Exclude)
 
-	// Validate table filter patterns for record_count
 	validateTablePatterns("record_count.tables.include", &cfg.Collectors.RecordCount.Tables.Include)
 	validateTablePatterns("record_count.tables.exclude", &cfg.Collectors.RecordCount.Tables.Exclude)
 
-	// Validate OpenTelemetry settings
 	validateOpenTelemetryConfig(cfg)
 }
 
@@ -300,14 +282,12 @@ func validateTablePatterns(fieldName string, patterns *[]string) {
 func validateOpenTelemetryConfig(cfg *config) {
 	otel := &cfg.Collectors.OpenTelemetry
 
-	// Validate gRPC endpoint
 	if otel.Enabled && otel.GRPCEndpoint == "" {
 		slog.Warn("open_telemetry is enabled but grpc_endpoint is empty, using default",
 			"default", ":4317")
 		otel.GRPCEndpoint = ":4317"
 	}
 
-	// Validate batch size
 	if otel.BatchSize <= 0 {
 		slog.Warn("open_telemetry batch_size must be positive, using default",
 			"provided", otel.BatchSize,
@@ -315,7 +295,6 @@ func validateOpenTelemetryConfig(cfg *config) {
 		otel.BatchSize = 100
 	}
 
-	// Validate batch timeout
 	if otel.BatchTimeoutMs <= 0 {
 		slog.Warn("open_telemetry batch_timeout_ms must be positive, using default",
 			"provided", otel.BatchTimeoutMs,
@@ -323,7 +302,6 @@ func validateOpenTelemetryConfig(cfg *config) {
 		otel.BatchTimeoutMs = 1000
 	}
 
-	// Validate max recv size
 	if otel.MaxRecvSize <= 0 {
 		slog.Warn("open_telemetry max_recv_size must be positive, using default",
 			"provided", otel.MaxRecvSize,
@@ -331,7 +309,6 @@ func validateOpenTelemetryConfig(cfg *config) {
 		otel.MaxRecvSize = 4
 	}
 
-	// Validate translation strategy
 	validStrategies := []string{"UnderscoreEscapingWithSuffixes", "NoTranslation"}
 	if otel.TranslationStrategy == "" {
 		slog.Warn("open_telemetry translation_strategy is empty, using default",
@@ -345,8 +322,6 @@ func validateOpenTelemetryConfig(cfg *config) {
 		otel.TranslationStrategy = "UnderscoreEscapingWithSuffixes"
 	}
 }
-
-// everything below stays unexported
 
 func defaultConfig() *config {
 	return &config{
@@ -424,8 +399,6 @@ func applyEnvironmentOverrides(cfg *config) {
 	}
 }
 
-// methods can stay exported if you still want to use them from outside
-
 func (c *config) Port() int {
 	return c.Exporter.Port
 }
@@ -466,11 +439,6 @@ func (c *config) StorageEngine() string {
 
 func (c *config) DeploymentMode() string {
 	return c.SurrealDB.DeploymentMode
-}
-
-// InfoCollectorEnabled always returns true - info collector is always active
-func (c *config) InfoCollectorEnabled() bool {
-	return true
 }
 
 func (c *config) RecordCountCollectorEnabled() bool {
@@ -544,8 +512,6 @@ func (c *config) StatsTableRemoveOrphanTables() bool {
 func (c *config) StatsTableNamePrefix() string {
 	return c.Collectors.StatsTable.SideTableNamePrefix
 }
-
-// OpenTelemetry configuration accessors
 
 func (c *config) OTLPReceiverEnabled() bool {
 	return c.Collectors.OpenTelemetry.Enabled

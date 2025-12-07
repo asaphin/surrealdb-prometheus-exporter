@@ -7,7 +7,6 @@ import (
 )
 
 type Config interface {
-	InfoCollectorEnabled() bool
 	RecordCountCollectorEnabled() bool
 	LiveQueryEnabled() bool
 	StatsTableEnabled() bool
@@ -40,14 +39,10 @@ func New(
 
 	prometheus.WrapCollectorWith(constantLabels, registry)
 
-	// Info collector is always active
-	if cfg.InfoCollectorEnabled() {
-		registry.MustRegister(
-			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewInfoCollector(versionReader, infoMetricsReader)),
-		)
-	}
+	registry.MustRegister(
+		prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewInfoCollector(versionReader, infoMetricsReader)),
+	)
 
-	// Record count collector is now separately configurable
 	if cfg.RecordCountCollectorEnabled() {
 		registry.MustRegister(
 			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewRecordCountCollector(recordCountReader, recordCountFilter)),

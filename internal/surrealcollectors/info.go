@@ -29,10 +29,8 @@ type InfoCollector struct {
 
 	tableInfoCache *tableInfoCache
 
-	// Build information
 	versionDesc *prometheus.Desc
 
-	// System metrics
 	availableParallelismDesc *prometheus.Desc
 	cpuUsageDesc             *prometheus.Desc
 	loadAverageDesc          *prometheus.Desc
@@ -42,20 +40,16 @@ type InfoCollector struct {
 	physicalCoresDesc        *prometheus.Desc
 	threadsDesc              *prometheus.Desc
 
-	// Info scrape metrics
 	scrapeDurationDesc *prometheus.Desc
 
-	// Root-level metrics
 	rootAccessesDesc *prometheus.Desc
 	rootUsersDesc    *prometheus.Desc
 	nodesDesc        *prometheus.Desc
 
-	// Namespace-level metrics
 	namespaceAccessesDesc  *prometheus.Desc
 	namespaceDatabasesDesc *prometheus.Desc
 	namespaceUsersDesc     *prometheus.Desc
 
-	// Database-level metrics
 	databaseAccessesDesc  *prometheus.Desc
 	databaseAnalyzersDesc *prometheus.Desc
 	databaseApisDesc      *prometheus.Desc
@@ -66,14 +60,12 @@ type InfoCollector struct {
 	databaseTablesDesc    *prometheus.Desc
 	databaseUsersDesc     *prometheus.Desc
 
-	// Table-level metrics
 	tableEventsDesc  *prometheus.Desc
 	tableFieldsDesc  *prometheus.Desc
 	tableIndexesDesc *prometheus.Desc
 	tableLivesDesc   *prometheus.Desc
 	tableTablesDesc  *prometheus.Desc
 
-	// Index-level metrics
 	indexBuildingDesc        *prometheus.Desc
 	indexBuildingInitialDesc *prometheus.Desc
 	indexBuildingPendingDesc *prometheus.Desc
@@ -87,7 +79,6 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 
 		tableInfoCache: getTableInfoCache(),
 
-		// Build information
 		versionDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemBuild, "info"),
 			"SurrealDB build and version information",
@@ -95,25 +86,27 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// System metrics
 		availableParallelismDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "available_parallelism"),
 			"Available CPU parallelism for the SurrealDB instance",
 			nil,
 			nil,
 		),
+
 		cpuUsageDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "cpu_usage"),
 			"Current CPU usage (0.0 to 1.0)",
 			nil,
 			nil,
 		),
+
 		loadAverageDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "load_average"),
 			"System load average",
 			[]string{"period"},
 			nil,
 		),
+
 		memoryAllocatedDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "memory_allocated_bytes"),
 			"Total allocated memory in bytes",
@@ -126,6 +119,7 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 			nil,
 		),
+
 		memoryUsageRatioDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "memory_usage_ratio"),
 			"Memory usage as ratio of allocated memory (0.0 to 1.0)",
@@ -138,6 +132,7 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 			nil,
 		),
+
 		threadsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemSystem, "threads"),
 			"Number of threads",
@@ -145,7 +140,6 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// Info scrape metrics
 		scrapeDurationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, SubsystemInfo, "scrape_duration_seconds"),
 			"Duration of the INFO scrape in seconds",
@@ -153,19 +147,20 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// Root-level metrics
 		rootAccessesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "root", "accesses"),
 			"Number of accesses defined at root level",
 			nil,
 			nil,
 		),
+
 		rootUsersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "root", "users"),
 			"Number of users defined at root level",
 			nil,
 			nil,
 		),
+
 		nodesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "root", "nodes"),
 			"Number of nodes in the deployment",
@@ -173,19 +168,20 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// Namespace-level metrics
 		namespaceAccessesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "namespace", "accesses"),
 			"Number of accesses defined in the namespace",
 			[]string{"namespace"},
 			nil,
 		),
+
 		namespaceDatabasesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "namespace", "databases"),
 			"Number of databases in the namespace",
 			[]string{"namespace"},
 			nil,
 		),
+
 		namespaceUsersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "namespace", "users"),
 			"Number of users defined in the namespace",
@@ -193,31 +189,34 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// Database-level metrics
 		databaseAccessesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "accesses"),
 			"Number of accesses defined in the database",
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseAnalyzersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "analyzers"),
 			"Number of analyzers defined in the database",
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseApisDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "apis"),
 			"Number of APIs defined in the database",
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseConfigsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "configs"),
 			"Number of configs defined in the database",
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseFunctionsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "functions"),
 			"Number of functions defined in the database",
@@ -230,18 +229,21 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseParamsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "params"),
 			"Number of params defined in the database",
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseTablesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "tables"),
 			"Number of tables in the database",
 			[]string{"namespace", "database"},
 			nil,
 		),
+
 		databaseUsersDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "database", "users"),
 			"Number of users defined in the database",
@@ -249,31 +251,34 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// Table-level metrics
 		tableEventsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "events"),
 			"Number of events defined in the table",
 			[]string{"namespace", "database", "table"},
 			nil,
 		),
+
 		tableFieldsDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "fields"),
 			"Number of fields defined in the table",
 			[]string{"namespace", "database", "table"},
 			nil,
 		),
+
 		tableIndexesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "indexes"),
 			"Number of indexes defined in the table",
 			[]string{"namespace", "database", "table"},
 			nil,
 		),
+
 		tableLivesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "lives"),
 			"Number of live queries defined in the table",
 			[]string{"namespace", "database", "table"},
 			nil,
 		),
+
 		tableTablesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "table", "tables"),
 			"Number of sub-tables defined in the table",
@@ -281,25 +286,27 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 			nil,
 		),
 
-		// Index-level metrics
 		indexBuildingDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building"),
 			"Whether the index is currently building (1) or not (0)",
 			[]string{"namespace", "database", "table", "index", "status"},
 			nil,
 		),
+
 		indexBuildingInitialDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building_initial"),
 			"Initial count for index building process",
 			[]string{"namespace", "database", "table", "index", "status"},
 			nil,
 		),
+
 		indexBuildingPendingDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building_pending"),
 			"Pending count for index building process",
 			[]string{"namespace", "database", "table", "index", "status"},
 			nil,
 		),
+
 		indexBuildingUpdatedDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(domain.Namespace, "index", "building_updated"),
 			"Updated count for index building process",
@@ -310,10 +317,8 @@ func NewInfoCollector(versionReader VersionReader, infoMetricsReader InfoMetrics
 }
 
 func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
-	// Build information
 	ch <- c.versionDesc
 
-	// System metrics
 	ch <- c.availableParallelismDesc
 	ch <- c.cpuUsageDesc
 	ch <- c.loadAverageDesc
@@ -323,20 +328,16 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.physicalCoresDesc
 	ch <- c.threadsDesc
 
-	// Info scrape metrics
 	ch <- c.scrapeDurationDesc
 
-	// Root-level metrics
 	ch <- c.rootAccessesDesc
 	ch <- c.rootUsersDesc
 	ch <- c.nodesDesc
 
-	// Namespace-level metrics
 	ch <- c.namespaceAccessesDesc
 	ch <- c.namespaceDatabasesDesc
 	ch <- c.namespaceUsersDesc
 
-	// Database-level metrics
 	ch <- c.databaseAccessesDesc
 	ch <- c.databaseAnalyzersDesc
 	ch <- c.databaseApisDesc
@@ -347,14 +348,12 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.databaseTablesDesc
 	ch <- c.databaseUsersDesc
 
-	// Table-level metrics
 	ch <- c.tableEventsDesc
 	ch <- c.tableFieldsDesc
 	ch <- c.tableIndexesDesc
 	ch <- c.tableLivesDesc
 	ch <- c.tableTablesDesc
 
-	// Index-level metrics
 	ch <- c.indexBuildingDesc
 	ch <- c.indexBuildingInitialDesc
 	ch <- c.indexBuildingPendingDesc
@@ -364,10 +363,8 @@ func (c *InfoCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *InfoCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
-	// Collect version information
 	c.collectVersion(ctx, ch)
 
-	// Collect all info metrics
 	info, err := c.infoMetricsReader.Info(ctx)
 	if err != nil {
 		slog.Error("InfoCollector: failed to fetch server info", "error", err)
@@ -407,14 +404,12 @@ func (c *InfoCollector) collectSystemMetrics(ch chan<- prometheus.Metric, info *
 		float64(info.System.AvailableParallelism),
 	)
 
-	// Convert percentage to ratio (0-1)
 	ch <- prometheus.MustNewConstMetric(
 		c.cpuUsageDesc,
 		prometheus.GaugeValue,
 		info.System.CpuUsage/100,
 	)
 
-	// Load average metrics with period labels (1m, 5m, 15m)
 	periods := []string{"1m", "5m", "15m"}
 	for i, load := range info.System.LoadAverage {
 		if i < len(periods) {
@@ -440,7 +435,6 @@ func (c *InfoCollector) collectSystemMetrics(ch chan<- prometheus.Metric, info *
 	)
 
 	// TODO check this
-	// Convert percentage to ratio (0-1)
 	ch <- prometheus.MustNewConstMetric(
 		c.memoryUsageRatioDesc,
 		prometheus.GaugeValue,
@@ -626,7 +620,6 @@ func (c *InfoCollector) collectIndexMetrics(ch chan<- prometheus.Metric, info *d
 			buildingValue = 1
 		}
 
-		// Use empty string if status is not set
 		status := idx.Building.Status
 		if status == "" {
 			status = "none"

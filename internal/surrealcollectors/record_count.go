@@ -20,7 +20,6 @@ type recordCountCollector struct {
 
 	tableInfoCache *tableInfoCache
 
-	// Metrics
 	tableRecordCount *prometheus.Desc
 	scrapeDuration   *prometheus.Desc
 }
@@ -63,7 +62,6 @@ func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Filter tables based on config if filter is provided
 	var filteredTables []*domain.TableInfo
 	if c.filter != nil {
 		filteredTableIDs := c.filter.FilterTables(tables)
@@ -72,7 +70,6 @@ func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		// Convert filtered TableIdentifiers back to TableInfo
 		tableIDSet := make(map[string]struct{})
 		for _, id := range filteredTableIDs {
 			tableIDSet[id.String()] = struct{}{}
@@ -97,14 +94,12 @@ func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Fetch record counts
 	metrics, err := c.reader.RecordCount(ctx, filteredTables)
 	if err != nil {
 		slog.Error("unable to collect record counts", "error", err)
 		return
 	}
 
-	// Export table record count metrics
 	for _, tableCount := range metrics.Tables {
 		ch <- prometheus.MustNewConstMetric(
 			c.tableRecordCount,
@@ -116,7 +111,6 @@ func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 		)
 	}
 
-	// Export scrape duration metric
 	ch <- prometheus.MustNewConstMetric(
 		c.scrapeDuration,
 		prometheus.GaugeValue,

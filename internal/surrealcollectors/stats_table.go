@@ -23,7 +23,6 @@ type StatsTableCollector struct {
 	filter             TableFilter
 	statsTablePrefix   string
 
-	// Prometheus gauges - these represent current values from stats tables
 	operations     *prometheus.GaugeVec
 	scrapeDuration *prometheus.Desc
 }
@@ -68,11 +67,10 @@ func (c *StatsTableCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 	startTime := time.Now()
 
-	// Get tables from cache
 	tables := c.tableCache.get()
 	if len(tables) == 0 {
 		slog.Debug("No tables in cache for stats table monitoring")
-		// Still report scrape duration even when no tables
+
 		ch <- prometheus.MustNewConstMetric(
 			c.scrapeDuration,
 			prometheus.GaugeValue,
@@ -81,8 +79,6 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Filter out stats tables themselves to prevent infinite cascade
-	// (e.g., don't create stats tables for _stats_* tables)
 	var nonStatsTables []*domain.TableInfo
 	for _, table := range tables {
 		if !strings.HasPrefix(table.Name, c.statsTablePrefix) {
@@ -100,11 +96,10 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Filter tables based on config
 	filteredTableIDs := c.filter.FilterTables(nonStatsTables)
 	if len(filteredTableIDs) == 0 {
 		slog.Debug("No tables match filter patterns for stats table")
-		// Still report scrape duration even when no tables match
+
 		ch <- prometheus.MustNewConstMetric(
 			c.scrapeDuration,
 			prometheus.GaugeValue,
@@ -113,11 +108,10 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Get metrics from stats tables
 	statsData, err := c.statsTableProvider.StatsTableInfo(filteredTableIDs)
 	if err != nil {
 		slog.Error("Failed to get stats table metrics", "error", err)
-		// Still report scrape duration on error
+
 		ch <- prometheus.MustNewConstMetric(
 			c.scrapeDuration,
 			prometheus.GaugeValue,
@@ -126,9 +120,7 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// Set gauges with current values from stats tables
 	for _, data := range statsData {
-		// Create operations
 		c.operations.With(prometheus.Labels{
 			"namespace":      data.Namespace,
 			"database":       data.Database,
@@ -161,7 +153,6 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 			"operation_type": string(domain.OperationTypeDocument),
 		}).Set(float64(data.CreateDocument))
 
-		// Update operations
 		c.operations.With(prometheus.Labels{
 			"namespace":      data.Namespace,
 			"database":       data.Database,
@@ -194,7 +185,6 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 			"operation_type": string(domain.OperationTypeDocument),
 		}).Set(float64(data.UpdateDocument))
 
-		// Delete operations
 		c.operations.With(prometheus.Labels{
 			"namespace":      data.Namespace,
 			"database":       data.Database,
@@ -228,10 +218,8 @@ func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 		}).Set(float64(data.DeleteDocument))
 	}
 
-	// Collect the actual metric values
 	c.operations.Collect(ch)
 
-	// Report scrape duration
 	ch <- prometheus.MustNewConstMetric(
 		c.scrapeDuration,
 		prometheus.GaugeValue,

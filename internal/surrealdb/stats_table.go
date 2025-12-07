@@ -36,8 +36,7 @@ type StatsTableManager struct {
 	removeOrphanTables bool
 	sideTablePrefix    string
 
-	// Current state
-	activeTables map[string]*statsTableState // key: tableID
+	activeTables map[string]*statsTableState
 	mu           sync.RWMutex
 
 	ctx    context.Context
@@ -71,13 +70,11 @@ func NewStatsTableManager(
 
 // StatsTableInfo returns stats from all side tables and reconciles tables
 func (m *StatsTableManager) StatsTableInfo(tableIDs []domain.TableIdentifier) ([]*domain.StatsTableData, error) {
-	// First, query all stats tables and get data
 	statsData, err := m.queryAllStatsTables(tableIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query stats tables: %w", err)
 	}
 
-	// Reconcile tables asynchronously (creates new tables, removes orphans)
 	go m.reconcileTables(tableIDs)
 
 	return statsData, nil
@@ -119,7 +116,6 @@ func (m *StatsTableManager) queryAllStatsTables(tableIDs []domain.TableIdentifie
 	wg.Wait()
 	close(errChan)
 
-	// Check for errors
 	for err := range errChan {
 		slog.Warn("Error querying stats table", "error", err)
 	}
@@ -139,21 +135,17 @@ func (m *StatsTableManager) queryStatsTable(tableID domain.TableIdentifier) (*do
 
 	statsTableName := m.getStatsTableName(tableID.Table)
 
-	// Query the stats table using sdk.Query with generic type
 	query := fmt.Sprintf("SELECT * FROM %s LIMIT 1", statsTableName)
 	results, err := sdk.Query[[]*statsRecord](ctx, db, query, nil)
 	if err != nil {
-		// Table might not exist yet, that's okay
 		slog.Debug("Stats table query failed", "table", tableID.String(), "error", err)
 		return nil, nil
 	}
 
-	// Check if we got results
 	if results == nil || len(*results) == 0 {
 		return nil, nil
 	}
 
-	// Get first query result
 	queryResult := (*results)[0]
 	if queryResult.Status != "OK" {
 		slog.Debug("Stats table query returned non-OK status",
@@ -163,7 +155,6 @@ func (m *StatsTableManager) queryStatsTable(tableID domain.TableIdentifier) (*do
 		return nil, nil
 	}
 
-	// Check if result has data
 	if queryResult.Result == nil || len(queryResult.Result) == 0 {
 		return nil, nil
 	}
@@ -197,13 +188,11 @@ func (m *StatsTableManager) reconcileTables(desiredTables []domain.TableIdentifi
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Build set of desired tables
 	desired := make(map[string]domain.TableIdentifier)
 	for _, table := range desiredTables {
 		desired[table.String()] = table
 	}
 
-	// Remove orphan stats tables if configured
 	if m.removeOrphanTables {
 		for tableKey, state := range m.activeTables {
 			if _, exists := desired[tableKey]; !exists {
@@ -216,7 +205,6 @@ func (m *StatsTableManager) reconcileTables(desiredTables []domain.TableIdentifi
 		}
 	}
 
-	// Create stats tables for new tables
 	for tableKey, tableID := range desired {
 		if _, exists := m.activeTables[tableKey]; !exists {
 			slog.Info("Creating stats table for new table", "table", tableKey)
@@ -246,7 +234,6 @@ func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) err
 
 	statsTableName := m.getStatsTableName(tableID.Table)
 
-	// Create stats table with a single record (idempotent - won't fail if exists)
 	createTableQuery := fmt.Sprintf(`
 	IF !record::exists(%[1]s:stats) THEN
 		CREATE %[1]s:stats SET
@@ -279,8 +266,6 @@ func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) err
 		}
 	}
 
-	// Create event for CREATE operations
-	// Using method chaining syntax for better readability
 	createEventQuery := fmt.Sprintf(`
 		DEFINE EVENT stats_create ON TABLE %s WHEN $event = "CREATE" THEN {
 			LET $op_type = IF $after.in AND $after.out THEN "graph"
@@ -310,7 +295,6 @@ func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) err
 		}
 	}
 
-	// Create event for UPDATE operations
 	updateEventQuery := fmt.Sprintf(`
 		DEFINE EVENT stats_update ON TABLE %s WHEN $event = "UPDATE" THEN {
 			LET $op_type = IF $after.in AND $after.out THEN "graph"
@@ -340,7 +324,6 @@ func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) err
 		}
 	}
 
-	// Create event for DELETE operations
 	deleteEventQuery := fmt.Sprintf(`
 		DEFINE EVENT stats_delete ON TABLE %s WHEN $event = "DELETE" THEN {
 			LET $op_type = IF $before.in AND $before.out THEN "graph"
@@ -389,7 +372,6 @@ func (m *StatsTableManager) removeStatsTable(state *statsTableState) error {
 		return fmt.Errorf("failed to get connection: %w", err)
 	}
 
-	// Remove events
 	eventNames := []string{"stats_create", "stats_update", "stats_delete"}
 	for _, eventName := range eventNames {
 		query := fmt.Sprintf("REMOVE EVENT %s ON TABLE %s", eventName, state.targetTableID.Table)
@@ -407,7 +389,6 @@ func (m *StatsTableManager) removeStatsTable(state *statsTableState) error {
 		}
 	}
 
-	// Remove stats table
 	query := fmt.Sprintf("DELETE %s", state.statsTableName)
 	results, err := sdk.Query[any](ctx, db, query, nil)
 	if err != nil {

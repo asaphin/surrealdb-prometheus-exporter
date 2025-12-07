@@ -64,9 +64,7 @@ func main() {
 
 	recordCountFilter := engine.NewTableFilter(cfg.RecordCountIncludePatterns(), cfg.RecordCountExcludePatterns())
 
-	// Pre-warm the table cache to avoid race conditions between collectors.
-	// This ensures that StatsTableCollector and LiveQueryCollector have table data
-	// available on the first scrape, regardless of collector execution order.
+	// Pre-warm the table cache
 	if cfg.StatsTableEnabled() || cfg.LiveQueryEnabled() || cfg.RecordCountCollectorEnabled() {
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.SurrealTimeout())
 		info, err := infoReader.Info(ctx)
@@ -95,10 +93,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create combined gatherer - start with the main registry
 	gatherers := prometheus.Gatherers{metricsRegistry}
 
-	// Start OTLP receiver if enabled and add its registry to gatherers
 	var otlpShutdown func()
 	if cfg.OTLPReceiverEnabled() {
 		var otlpRegistry *prometheus.Registry
@@ -106,7 +102,6 @@ func main() {
 		gatherers = append(gatherers, otlpRegistry)
 	}
 
-	// Start main HTTP server with graceful shutdown
 	serverErrChan := make(chan error, 1)
 	go func() {
 		if err := api.StartPrometheusServer(cfg, gatherers); err != nil {
@@ -114,7 +109,6 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -125,7 +119,6 @@ func main() {
 		slog.Info("Received shutdown signal", "signal", sig)
 	}
 
-	// Shutdown OTLP receiver if it was started
 	if otlpShutdown != nil {
 		otlpShutdown()
 	}
@@ -137,12 +130,10 @@ func main() {
 func startOTLPReceiver(cfg config.Config) (*prometheus.Registry, func()) {
 	slog.Info("Starting OpenTelemetry collector")
 
-	// Create a separate Prometheus registry for OTLP metrics
 	otlpRegistry := prometheus.NewRegistry()
 
 	conv := converter.NewConverter(cfg, otlpRegistry)
 
-	// Create processor
 	var proc processor.Processor
 	if cfg.OTLPBatchingEnabled() {
 		batchTimeout := time.Duration(cfg.OTLPBatchTimeoutMs()) * time.Millisecond
@@ -151,7 +142,6 @@ func startOTLPReceiver(cfg config.Config) (*prometheus.Registry, func()) {
 		proc = processor.NewDirectProcessor(conv)
 	}
 
-	// Start gRPC receiver
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(cfg.OTLPMaxRecvSize() * 1024 * 1024),
 	)
@@ -170,14 +160,11 @@ func startOTLPReceiver(cfg config.Config) (*prometheus.Registry, func()) {
 		}()
 	}
 
-	// Return registry and shutdown function
 	return otlpRegistry, func() {
 		slog.Info("Shutting down OpenTelemetry collector")
 
-		// Shutdown gRPC server
 		grpcServer.GracefulStop()
 
-		// Flush any pending metrics if using batch processor
 		if batchProc, ok := proc.(*processor.BatchProcessor); ok {
 			if err := batchProc.Flush(); err != nil {
 				slog.Error("Error flushing batch processor", "error", err)
