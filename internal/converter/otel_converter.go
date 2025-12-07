@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math"
+	"strings"
 	"sync"
 
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/domain"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// Config holds converter configuration
+// Config holds converter configuration.
 type Config interface {
 	OTLPTranslationStrategy() string
 	ClusterName() string
@@ -19,7 +21,7 @@ type Config interface {
 	DeploymentMode() string
 }
 
-// Converter handles conversion of domain metrics to Prometheus format
+// Converter handles conversion of domain metrics to Prometheus format.
 type Converter struct {
 	config      Config
 	registry    *prometheus.Registry
@@ -34,7 +36,7 @@ type Converter struct {
 	mu sync.RWMutex
 }
 
-// NewConverter creates a new converter instance
+// NewConverter creates a new converter instance.
 func NewConverter(cfg Config, registry *prometheus.Registry) *Converter {
 	constLabels := map[string]string{
 		"cluster":         cfg.ClusterName(),
@@ -53,7 +55,7 @@ func NewConverter(cfg Config, registry *prometheus.Registry) *Converter {
 	}
 }
 
-// Convert converts a batch of domain metrics to Prometheus format
+// Convert converts a batch of domain metrics to Prometheus format.
 func (c *Converter) Convert(batch domain.MetricBatch) error {
 	for _, metric := range batch.Metrics {
 		if err := c.convertMetric(metric); err != nil {
@@ -69,7 +71,7 @@ func (c *Converter) Convert(batch domain.MetricBatch) error {
 	return nil
 }
 
-// convertMetric converts a single metric to Prometheus format
+// convertMetric converts a single metric to Prometheus format.
 func (c *Converter) convertMetric(metric domain.Metric) error {
 	originalName := metric.Name
 
@@ -92,7 +94,7 @@ func (c *Converter) convertMetric(metric domain.Metric) error {
 	}
 }
 
-// prepareLabels sanitizes labels and adds constant labels
+// prepareLabels sanitizes labels and adds constant labels.
 func (c *Converter) prepareLabels(metricName string, labels map[string]string) (map[string]string, []string) {
 	if existingLabelNames, exists := c.metricLabelNames[metricName]; exists {
 		promLabels := make(map[string]string)
@@ -104,9 +106,7 @@ func (c *Converter) prepareLabels(metricName string, labels map[string]string) (
 			}
 		}
 
-		for k, v := range c.constLabels {
-			promLabels[k] = v
-		}
+		maps.Copy(promLabels, c.constLabels)
 
 		return promLabels, existingLabelNames
 	}
@@ -130,8 +130,13 @@ func (c *Converter) prepareLabels(metricName string, labels map[string]string) (
 	return promLabels, labelNames
 }
 
-// convertGauge converts a gauge metric
-func (c *Converter) convertGauge(name, originalName string, metric domain.Metric, labels map[string]string, labelNames []string) error {
+// convertGauge converts a gauge metric.
+func (c *Converter) convertGauge(
+	name, originalName string,
+	metric domain.Metric,
+	labels map[string]string,
+	labelNames []string,
+) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -161,8 +166,13 @@ func (c *Converter) convertGauge(name, originalName string, metric domain.Metric
 	return nil
 }
 
-// convertCounter converts a counter metric
-func (c *Converter) convertCounter(name, originalName string, metric domain.Metric, labels map[string]string, labelNames []string) error {
+// convertCounter converts a counter metric.
+func (c *Converter) convertCounter(
+	name, originalName string,
+	metric domain.Metric,
+	labels map[string]string,
+	labelNames []string,
+) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -192,10 +202,15 @@ func (c *Converter) convertCounter(name, originalName string, metric domain.Metr
 	return nil
 }
 
-// convertHistogram converts a histogram metric
-func (c *Converter) convertHistogram(name, originalName string, metric domain.Metric, labels map[string]string, labelNames []string) error {
+// convertHistogram converts a histogram metric.
+func (c *Converter) convertHistogram(
+	name, originalName string,
+	metric domain.Metric,
+	labels map[string]string,
+	labelNames []string,
+) error {
 	if !metric.HasHistogramData() {
-		return fmt.Errorf("histogram metric missing histogram data")
+		return errors.New("histogram metric missing histogram data")
 	}
 
 	c.mu.Lock()
@@ -226,7 +241,7 @@ func (c *Converter) convertHistogram(name, originalName string, metric domain.Me
 }
 
 // convertHistogramUnitsForMetric applies unit conversion to histogram bucket bounds and sum,
-// using metric-aware correction for known OTEL metrics
+// using metric-aware correction for known OTEL metrics.
 func convertHistogramUnitsForMetric(metric domain.Metric, originalName string) domain.Metric {
 	conv := domain.GetUnitConversionForMetric(originalName, metric.Unit)
 	if conv == nil || conv.Multiplier == 1 {
@@ -259,7 +274,7 @@ func convertHistogramUnitsForMetric(metric domain.Metric, originalName string) d
 	}
 }
 
-// histogramData stores the data needed to create a histogram metric
+// histogramData stores the data needed to create a histogram metric.
 type histogramData struct {
 	count   uint64
 	sum     float64
@@ -267,7 +282,7 @@ type histogramData struct {
 }
 
 // HistogramCollector is a custom Prometheus collector for histograms.
-// It uses ConstHistogram to allow setting bucket values directly
+// It uses ConstHistogram to allow setting bucket values directly.
 type HistogramCollector struct {
 	name        string
 	description string
@@ -278,7 +293,7 @@ type HistogramCollector struct {
 	labelSets map[string]prometheus.Labels
 }
 
-// NewHistogramCollector creates a new histogram collector
+// NewHistogramCollector creates a new histogram collector.
 func NewHistogramCollector(name, description string, labelNames []string) *HistogramCollector {
 	return &HistogramCollector{
 		name:        name,
@@ -289,15 +304,15 @@ func NewHistogramCollector(name, description string, labelNames []string) *Histo
 	}
 }
 
-// labelsToKey creates a deterministic string key from labels for deduplication
+// labelsToKey creates a deterministic string key from labels for deduplication.
 func labelsToKey(labels map[string]string) string {
 	keys := make([]string, 0, len(labels))
 	for k := range labels {
 		keys = append(keys, k)
 	}
 
-	for i := 0; i < len(keys)-1; i++ {
-		for j := 0; j < len(keys)-i-1; j++ {
+	for i := range len(keys) - 1 {
+		for j := range len(keys) - i - 1 {
 			if keys[j] > keys[j+1] {
 				keys[j], keys[j+1] = keys[j+1], keys[j]
 			}
@@ -305,14 +320,16 @@ func labelsToKey(labels map[string]string) string {
 	}
 
 	var result string
+	var resultSb308 strings.Builder
 	for _, k := range keys {
-		result += k + "=" + labels[k] + ","
+		resultSb308.WriteString(k + "=" + labels[k] + ",")
 	}
+	result += resultSb308.String()
 
 	return result
 }
 
-// Update updates the histogram with new metric data
+// Update updates the histogram with new metric data.
 func (h *HistogramCollector) Update(metric domain.Metric, labels map[string]string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -347,13 +364,13 @@ func (h *HistogramCollector) Update(metric domain.Metric, labels map[string]stri
 	}
 }
 
-// Describe implements prometheus.Collector
+// Describe implements prometheus.Collector.
 func (h *HistogramCollector) Describe(ch chan<- *prometheus.Desc) {
 	// We use NewConstHistogram, so we don't pre-register descriptions
 	// This is dynamic collection
 }
 
-// Collect implements prometheus.Collector
+// Collect implements prometheus.Collector.
 func (h *HistogramCollector) Collect(ch chan<- prometheus.Metric) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -386,7 +403,7 @@ func (h *HistogramCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// BucketsFromHistogramData extracts bucket boundaries from histogram data
+// BucketsFromHistogramData extracts bucket boundaries from histogram data.
 func BucketsFromHistogramData(data *domain.HistogramData) []float64 {
 	buckets := make([]float64, 0, len(data.Buckets))
 	for _, bucket := range data.Buckets {

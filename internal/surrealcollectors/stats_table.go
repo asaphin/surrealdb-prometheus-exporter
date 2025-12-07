@@ -11,12 +11,12 @@ import (
 
 const SubsystemStatsTable = "stats_table"
 
-// StatsTableInfoProvider provides stats table metrics
+// StatsTableInfoProvider provides stats table metrics.
 type StatsTableInfoProvider interface {
 	StatsTableInfo(tableIDs []domain.TableIdentifier) ([]*domain.StatsTableData, error)
 }
 
-// StatsTableCollector collects metrics from side stats tables
+// StatsTableCollector collects metrics from side stats tables.
 type StatsTableCollector struct {
 	statsTableProvider StatsTableInfoProvider
 	tableCache         *tableInfoCache
@@ -27,7 +27,7 @@ type StatsTableCollector struct {
 	scrapeDuration *prometheus.Desc
 }
 
-// NewStatsTableCollector creates a new stats table collector
+// NewStatsTableCollector creates a new stats table collector.
 func NewStatsTableCollector(
 	statsTableProvider StatsTableInfoProvider,
 	filter TableFilter,
@@ -57,13 +57,13 @@ func NewStatsTableCollector(
 	}
 }
 
-// Describe implements prometheus.Collector
+// Describe implements prometheus.Collector.
 func (c *StatsTableCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.operations.Describe(ch)
 	ch <- c.scrapeDuration
 }
 
-// Collect implements prometheus.Collector
+// Collect implements prometheus.Collector.
 func (c *StatsTableCollector) Collect(ch chan<- prometheus.Metric) {
 	startTime := time.Now()
 

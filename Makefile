@@ -91,3 +91,15 @@ docker-dev: docker-stop docker-build docker-run-with-config docker-logs
 # Clean up all Docker resources
 docker-clean: docker-stop
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
+
+lint:
+	golangci-lint run
+
+lint-fix:
+	golangci-lint run --fix
+
+lint-strict:
+	golangci-lint run --max-issues-per-linter=0 --max-same-issues=0
+
+lint-strict-fix:
+	golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 --fix

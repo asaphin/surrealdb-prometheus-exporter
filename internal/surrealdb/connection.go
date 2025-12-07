@@ -2,6 +2,7 @@ package surrealdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -40,7 +41,7 @@ func NewMultiConnectionManager(cfg Config) *multiConnectionManager {
 
 func (m *multiConnectionManager) Get(ctx context.Context, ns, db string) (*surrealdb.DB, error) {
 	if (ns == "" && db != "") || (ns != "" && db == "") {
-		return nil, fmt.Errorf("namespace and database must both be provided or both be empty")
+		return nil, errors.New("namespace and database must both be provided or both be empty")
 	}
 
 	if ns != "" { // it is not necessary to check db value after first condition

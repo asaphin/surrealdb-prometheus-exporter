@@ -9,7 +9,7 @@ import (
 
 const SubsystemLiveQuery = "live_query"
 
-// LiveQueryInfoProvider provides live query metrics
+// LiveQueryInfoProvider provides live query metrics.
 type LiveQueryInfoProvider interface {
 	LiveQueryInfo(tableIDs []domain.TableIdentifier) ([]*domain.TableOperationMetrics, error)
 }
@@ -18,7 +18,7 @@ type TableFilter interface {
 	FilterTables(tables []*domain.TableInfo) []domain.TableIdentifier
 }
 
-// LiveQueryCollector collects metrics from live queries
+// LiveQueryCollector collects metrics from live queries.
 type LiveQueryCollector struct {
 	liveQueryProvider LiveQueryInfoProvider
 	tableCache        *tableInfoCache
@@ -27,7 +27,7 @@ type LiveQueryCollector struct {
 	operations *prometheus.CounterVec
 }
 
-// NewLiveQueryCollector creates a new live query collector
+// NewLiveQueryCollector creates a new live query collector.
 func NewLiveQueryCollector(
 	liveQueryProvider LiveQueryInfoProvider,
 	filter TableFilter,
@@ -49,14 +49,14 @@ func NewLiveQueryCollector(
 	}
 }
 
-// Describe implements prometheus.Collector
+// Describe implements prometheus.Collector.
 func (c *LiveQueryCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.operations.Describe(ch)
 }
 
-// Collect implements prometheus.Collector
+// Collect implements prometheus.Collector.
 func (c *LiveQueryCollector) Collect(ch chan<- prometheus.Metric) {
-	//ctx := context.Background() // TODO implement using context
+	// ctx := context.Background() // TODO implement using context
 
 	tables := c.tableCache.get()
 	if len(tables) == 0 {

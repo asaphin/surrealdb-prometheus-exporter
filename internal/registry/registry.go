@@ -40,30 +40,60 @@ func New(
 	prometheus.WrapCollectorWith(constantLabels, registry)
 
 	registry.MustRegister(
-		prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewInfoCollector(versionReader, infoMetricsReader)),
+		prometheus.WrapCollectorWith(
+			constantLabels,
+			surrealcollectors.NewInfoCollector(versionReader, infoMetricsReader),
+		),
 	)
 
 	if cfg.RecordCountCollectorEnabled() {
 		registry.MustRegister(
-			prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewRecordCountCollector(recordCountReader, recordCountFilter)),
+			prometheus.WrapCollectorWith(
+				constantLabels,
+				surrealcollectors.NewRecordCountCollector(recordCountReader, recordCountFilter),
+			),
 		)
 	}
 
 	if cfg.LiveQueryEnabled() {
-		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewLiveQueryCollector(liveQueryProvider, liveQueryFilter)))
+		registry.MustRegister(
+			prometheus.WrapCollectorWith(
+				constantLabels,
+				surrealcollectors.NewLiveQueryCollector(liveQueryProvider, liveQueryFilter),
+			),
+		)
 	}
 
 	if cfg.StatsTableEnabled() {
-		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, surrealcollectors.NewStatsTableCollector(statsTableProvider, statsTableFilter, cfg.StatsTableNamePrefix())))
+		registry.MustRegister(
+			prometheus.WrapCollectorWith(
+				constantLabels,
+				surrealcollectors.NewStatsTableCollector(
+					statsTableProvider,
+					statsTableFilter,
+					cfg.StatsTableNamePrefix(),
+				),
+			),
+		)
 	}
 
 	if cfg.GoCollectorEnabled() {
 		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, collectors.NewBuildInfoCollector()))
-		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll))))
+		registry.MustRegister(
+			prometheus.WrapCollectorWith(
+				constantLabels,
+				collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)),
+			),
+		)
 	}
 
 	if cfg.ProcessCollectorEnabled() {
-		registry.MustRegister(prometheus.WrapCollectorWith(constantLabels, collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})))
+		registry.MustRegister(
+			prometheus.WrapCollectorWith(
+				constantLabels,
+				collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+			),
+		)
 	}
 
 	return registry, nil

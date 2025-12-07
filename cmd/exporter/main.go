@@ -1,4 +1,4 @@
-package main
+package main //nolint:cyclop
 
 import (
 	"context"
@@ -57,10 +57,18 @@ func main() {
 	}
 
 	tableFilter := engine.NewTableFilter(cfg.LiveQueryIncludePatterns(), cfg.LiveQueryExcludePatterns())
-	liveQueryProvider := surrealdb.NewLiveQueryManager(dbConnManager, cfg.LiveQueryReconnectDelay(), cfg.LiveQueryMaxReconnectAttempts())
+	liveQueryProvider := surrealdb.NewLiveQueryManager(
+		dbConnManager,
+		cfg.LiveQueryReconnectDelay(),
+		cfg.LiveQueryMaxReconnectAttempts(),
+	)
 
 	statsTableFilter := engine.NewTableFilter(cfg.StatsTableIncludePatterns(), cfg.StatsTableExcludePatterns())
-	statsTableProvider := surrealdb.NewStatsTableManager(dbConnManager, cfg.StatsTableRemoveOrphanTables(), cfg.StatsTableNamePrefix())
+	statsTableProvider := surrealdb.NewStatsTableManager(
+		dbConnManager,
+		cfg.StatsTableRemoveOrphanTables(),
+		cfg.StatsTableNamePrefix(),
+	)
 
 	recordCountFilter := engine.NewTableFilter(cfg.RecordCountIncludePatterns(), cfg.RecordCountExcludePatterns())
 
@@ -126,7 +134,7 @@ func main() {
 	slog.Info("Exporter shutdown complete")
 }
 
-// startOTLPReceiver starts the OTLP gRPC receiver and returns the registry
+// startOTLPReceiver starts the OTLP gRPC receiver and returns the registry.
 func startOTLPReceiver(cfg config.Config) (*prometheus.Registry, func()) {
 	slog.Info("Starting OpenTelemetry collector")
 

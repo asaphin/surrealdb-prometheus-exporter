@@ -11,7 +11,7 @@ import (
 
 const Namespace = "surrealdb"
 
-// SurrealDBInfo represents the complete hierarchical information about a SurrealDB instance
+// SurrealDBInfo represents the complete hierarchical information about a SurrealDB instance.
 type SurrealDBInfo struct {
 	System         SystemMetrics
 	Namespaces     map[string]*NamespaceInfo
@@ -21,7 +21,7 @@ type SurrealDBInfo struct {
 	ScrapeDuration time.Duration
 }
 
-// SystemMetrics contains system-level performance metrics
+// SystemMetrics contains system-level performance metrics.
 type SystemMetrics struct {
 	AvailableParallelism int
 	CpuUsage             float64
@@ -32,7 +32,7 @@ type SystemMetrics struct {
 	Threads              int
 }
 
-// NamespaceInfo contains information about a single namespace
+// NamespaceInfo contains information about a single namespace.
 type NamespaceInfo struct {
 	Name      string
 	Databases map[string]*DatabaseInfo
@@ -40,7 +40,7 @@ type NamespaceInfo struct {
 	Accesses  int
 }
 
-// DatabaseInfo contains information about a single database
+// DatabaseInfo contains information about a single database.
 type DatabaseInfo struct {
 	Name      string
 	Namespace string
@@ -55,7 +55,7 @@ type DatabaseInfo struct {
 	Params    int
 }
 
-// TableInfo contains information about a single table
+// TableInfo contains information about a single table.
 type TableInfo struct {
 	Name      string
 	Database  string
@@ -67,7 +67,7 @@ type TableInfo struct {
 	Tables    int
 }
 
-// IndexInfo contains information about a single index
+// IndexInfo contains information about a single index.
 type IndexInfo struct {
 	Name      string
 	Table     string
@@ -76,7 +76,7 @@ type IndexInfo struct {
 	Building  IndexBuildingMetrics
 }
 
-// IndexBuildingMetrics contains index building status metrics
+// IndexBuildingMetrics contains index building status metrics.
 type IndexBuildingMetrics struct {
 	Initial int
 	Pending int
@@ -84,7 +84,7 @@ type IndexBuildingMetrics struct {
 	Updated int
 }
 
-// TableRecordCount contains table record count metric
+// TableRecordCount contains table record count metric.
 type TableRecordCount struct {
 	Name        string
 	Database    string
@@ -92,18 +92,18 @@ type TableRecordCount struct {
 	RecordCount int
 }
 
-// RecordCountMetrics contains the complete set of record count metrics
+// RecordCountMetrics contains the complete set of record count metrics.
 type RecordCountMetrics struct {
 	Tables         []*TableRecordCount
 	ScrapeDuration time.Duration
 }
 
-// TotalNamespaces returns the total number of namespaces
+// TotalNamespaces returns the total number of namespaces.
 func (i *SurrealDBInfo) TotalNamespaces() int {
 	return len(i.Namespaces)
 }
 
-// TotalDatabases returns the total number of databases across all namespaces
+// TotalDatabases returns the total number of databases across all namespaces.
 func (i *SurrealDBInfo) TotalDatabases() int {
 	total := 0
 	for _, ns := range i.Namespaces {
@@ -112,7 +112,7 @@ func (i *SurrealDBInfo) TotalDatabases() int {
 	return total
 }
 
-// TotalTables returns the total number of tables across all databases
+// TotalTables returns the total number of tables across all databases.
 func (i *SurrealDBInfo) TotalTables() int {
 	total := 0
 	for _, ns := range i.Namespaces {
@@ -123,7 +123,7 @@ func (i *SurrealDBInfo) TotalTables() int {
 	return total
 }
 
-// TotalIndexes returns the total number of indexes across all tables
+// TotalIndexes returns the total number of indexes across all tables.
 func (i *SurrealDBInfo) TotalIndexes() int {
 	total := 0
 	for _, ns := range i.Namespaces {
@@ -136,7 +136,7 @@ func (i *SurrealDBInfo) TotalIndexes() int {
 	return total
 }
 
-// TotalUsers returns the total number of users at all levels
+// TotalUsers returns the total number of users at all levels.
 func (i *SurrealDBInfo) TotalUsers() int {
 	total := i.RootUsers
 	for _, ns := range i.Namespaces {
@@ -148,7 +148,7 @@ func (i *SurrealDBInfo) TotalUsers() int {
 	return total
 }
 
-// TotalAccesses returns the total number of accesses at all levels
+// TotalAccesses returns the total number of accesses at all levels.
 func (i *SurrealDBInfo) TotalAccesses() int {
 	total := i.RootAccesses
 	for _, ns := range i.Namespaces {
@@ -160,7 +160,7 @@ func (i *SurrealDBInfo) TotalAccesses() int {
 	return total
 }
 
-// BuildingIndexes returns all indexes that are currently building
+// BuildingIndexes returns all indexes that are currently building.
 func (i *SurrealDBInfo) BuildingIndexes() []*IndexInfo {
 	var building []*IndexInfo
 	for _, ns := range i.Namespaces {
@@ -177,7 +177,7 @@ func (i *SurrealDBInfo) BuildingIndexes() []*IndexInfo {
 	return building
 }
 
-// AllDatabases returns a flat list of all databases with their hierarchical context preserved
+// AllDatabases returns a flat list of all databases with their hierarchical context preserved.
 func (i *SurrealDBInfo) AllDatabases() []*DatabaseInfo {
 	var databases []*DatabaseInfo
 	for _, ns := range i.Namespaces {
@@ -188,7 +188,7 @@ func (i *SurrealDBInfo) AllDatabases() []*DatabaseInfo {
 	return databases
 }
 
-// AllTables returns a flat list of all tables with their hierarchical context preserved
+// AllTables returns a flat list of all tables with their hierarchical context preserved.
 func (i *SurrealDBInfo) AllTables() []*TableInfo {
 	var tables []*TableInfo
 	for _, ns := range i.Namespaces {
@@ -201,7 +201,7 @@ func (i *SurrealDBInfo) AllTables() []*TableInfo {
 	return tables
 }
 
-// AllIndexes returns a flat list of all indexes with their hierarchical context preserved
+// AllIndexes returns a flat list of all indexes with their hierarchical context preserved.
 func (i *SurrealDBInfo) AllIndexes() []*IndexInfo {
 	var indexes []*IndexInfo
 	for _, ns := range i.Namespaces {
@@ -216,7 +216,7 @@ func (i *SurrealDBInfo) AllIndexes() []*IndexInfo {
 	return indexes
 }
 
-// DatabasesByNamespace returns databases grouped by namespace name for metric labeling
+// DatabasesByNamespace returns databases grouped by namespace name for metric labeling.
 func (i *SurrealDBInfo) DatabasesByNamespace() map[string][]*DatabaseInfo {
 	result := make(map[string][]*DatabaseInfo)
 	for nsName, ns := range i.Namespaces {
@@ -229,7 +229,7 @@ func (i *SurrealDBInfo) DatabasesByNamespace() map[string][]*DatabaseInfo {
 	return result
 }
 
-// TablesByNamespace returns tables grouped by namespace name for metric labeling
+// TablesByNamespace returns tables grouped by namespace name for metric labeling.
 func (i *SurrealDBInfo) TablesByNamespace() map[string][]*TableInfo {
 	result := make(map[string][]*TableInfo)
 	for nsName, ns := range i.Namespaces {
@@ -244,7 +244,7 @@ func (i *SurrealDBInfo) TablesByNamespace() map[string][]*TableInfo {
 	return result
 }
 
-// IndexesByNamespace returns indexes grouped by namespace name for metric labeling
+// IndexesByNamespace returns indexes grouped by namespace name for metric labeling.
 func (i *SurrealDBInfo) IndexesByNamespace() map[string][]*IndexInfo {
 	result := make(map[string][]*IndexInfo)
 	for nsName, ns := range i.Namespaces {
@@ -261,12 +261,12 @@ func (i *SurrealDBInfo) IndexesByNamespace() map[string][]*IndexInfo {
 	return result
 }
 
-// DatabaseCount returns the count of databases for a specific namespace
+// DatabaseCount returns the count of databases for a specific namespace.
 func (ns *NamespaceInfo) DatabaseCount() int {
 	return len(ns.Databases)
 }
 
-// TableCount returns the count of tables across all databases in this namespace
+// TableCount returns the count of tables across all databases in this namespace.
 func (ns *NamespaceInfo) TableCount() int {
 	total := 0
 	for _, db := range ns.Databases {
@@ -275,7 +275,7 @@ func (ns *NamespaceInfo) TableCount() int {
 	return total
 }
 
-// IndexCount returns the count of indexes across all tables in this namespace
+// IndexCount returns the count of indexes across all tables in this namespace.
 func (ns *NamespaceInfo) IndexCount() int {
 	total := 0
 	for _, db := range ns.Databases {
@@ -286,7 +286,7 @@ func (ns *NamespaceInfo) IndexCount() int {
 	return total
 }
 
-// AllTables returns all tables in this namespace as a flat list
+// AllTables returns all tables in this namespace as a flat list.
 func (ns *NamespaceInfo) AllTables() []*TableInfo {
 	var tables []*TableInfo
 	for _, db := range ns.Databases {
@@ -297,7 +297,7 @@ func (ns *NamespaceInfo) AllTables() []*TableInfo {
 	return tables
 }
 
-// AllIndexes returns all indexes in this namespace as a flat list
+// AllIndexes returns all indexes in this namespace as a flat list.
 func (ns *NamespaceInfo) AllIndexes() []*IndexInfo {
 	var indexes []*IndexInfo
 	for _, db := range ns.Databases {
@@ -310,12 +310,12 @@ func (ns *NamespaceInfo) AllIndexes() []*IndexInfo {
 	return indexes
 }
 
-// TableCount returns the count of tables in this database
+// TableCount returns the count of tables in this database.
 func (db *DatabaseInfo) TableCount() int {
 	return len(db.Tables)
 }
 
-// IndexCount returns the count of indexes across all tables in this database
+// IndexCount returns the count of indexes across all tables in this database.
 func (db *DatabaseInfo) IndexCount() int {
 	total := 0
 	for _, table := range db.Tables {
@@ -324,7 +324,7 @@ func (db *DatabaseInfo) IndexCount() int {
 	return total
 }
 
-// AllIndexes returns all indexes in this database as a flat list
+// AllIndexes returns all indexes in this database as a flat list.
 func (db *DatabaseInfo) AllIndexes() []*IndexInfo {
 	var indexes []*IndexInfo
 	for _, table := range db.Tables {
@@ -335,12 +335,12 @@ func (db *DatabaseInfo) AllIndexes() []*IndexInfo {
 	return indexes
 }
 
-// IndexCount returns the count of indexes in this table
+// IndexCount returns the count of indexes in this table.
 func (t *TableInfo) IndexCount() int {
 	return len(t.Indexes)
 }
 
-// BuildingIndexes returns indexes that are currently building for this table
+// BuildingIndexes returns indexes that are currently building for this table.
 func (t *TableInfo) BuildingIndexes() []*IndexInfo {
 	var building []*IndexInfo
 	for _, idx := range t.Indexes {
@@ -351,27 +351,27 @@ func (t *TableInfo) BuildingIndexes() []*IndexInfo {
 	return building
 }
 
-// IsBuilding returns true if this index is currently building
+// IsBuilding returns true if this index is currently building.
 func (idx *IndexInfo) IsBuilding() bool {
 	return idx.Building.Status == "building" || idx.Building.Pending > 0
 }
 
-// FullPath returns the complete hierarchical path for this index
+// FullPath returns the complete hierarchical path for this index.
 func (idx *IndexInfo) FullPath() string {
 	return fmt.Sprintf("%s.%s.%s.%s", idx.Namespace, idx.Database, idx.Table, idx.Name)
 }
 
-// FullPath returns the complete hierarchical path for this table
+// FullPath returns the complete hierarchical path for this table.
 func (t *TableInfo) FullPath() string {
 	return fmt.Sprintf("%s.%s.%s", t.Namespace, t.Database, t.Name)
 }
 
-// FullPath returns the complete hierarchical path for this database
+// FullPath returns the complete hierarchical path for this database.
 func (db *DatabaseInfo) FullPath() string {
 	return fmt.Sprintf("%s.%s", db.Namespace, db.Name)
 }
 
-// MemoryUsagePercent returns memory usage as a percentage of allocated memory
+// MemoryUsagePercent returns memory usage as a percentage of allocated memory.
 func (m *SystemMetrics) MemoryUsagePercent() float64 { // TODO check this
 	if m.MemoryAllocated == 0 {
 		return 0
@@ -379,13 +379,13 @@ func (m *SystemMetrics) MemoryUsagePercent() float64 { // TODO check this
 	return (float64(m.MemoryUsage) / float64(m.MemoryAllocated)) * 100
 }
 
-// Namespace retrieves a specific namespace by name
+// Namespace retrieves a specific namespace by name.
 func (i *SurrealDBInfo) Namespace(name string) (*NamespaceInfo, bool) {
 	ns, exists := i.Namespaces[name]
 	return ns, exists
 }
 
-// Database retrieves a specific database by namespace and database name
+// Database retrieves a specific database by namespace and database name.
 func (i *SurrealDBInfo) Database(namespace, database string) (*DatabaseInfo, bool) {
 	ns, exists := i.Namespaces[namespace]
 	if !exists {
@@ -395,7 +395,7 @@ func (i *SurrealDBInfo) Database(namespace, database string) (*DatabaseInfo, boo
 	return db, exists
 }
 
-// Table retrieves a specific table by namespace, database, and table name
+// Table retrieves a specific table by namespace, database, and table name.
 func (i *SurrealDBInfo) Table(namespace, database, table string) (*TableInfo, bool) {
 	db, exists := i.Database(namespace, database)
 	if !exists {
@@ -405,19 +405,19 @@ func (i *SurrealDBInfo) Table(namespace, database, table string) (*TableInfo, bo
 	return tbl, exists
 }
 
-// TableIdentifier represents a unique table reference
+// TableIdentifier represents a unique table reference.
 type TableIdentifier struct {
 	Namespace string
 	Database  string
 	Table     string
 }
 
-// String returns the colon-separated identifier
+// String returns the colon-separated identifier.
 func (t TableIdentifier) String() string {
 	return t.Namespace + ":" + t.Database + ":" + t.Table
 }
 
-// ParseTableIdentifier parses a colon-separated table identifier
+// ParseTableIdentifier parses a colon-separated table identifier.
 func ParseTableIdentifier(s string) (TableIdentifier, error) {
 	parts := strings.Split(s, ":")
 	if len(parts) != 3 {
@@ -430,7 +430,7 @@ func ParseTableIdentifier(s string) (TableIdentifier, error) {
 	}, nil
 }
 
-// OperationType represents the data model type detected from actual data
+// OperationType represents the data model type detected from actual data.
 type OperationType string
 
 const (
@@ -441,7 +441,7 @@ const (
 	OperationTypeUnknown    OperationType = "unknown"
 )
 
-// OperationAction represents the type of database operation
+// OperationAction represents the type of database operation.
 type OperationAction string
 
 const (
@@ -451,7 +451,7 @@ const (
 	ActionUnknown OperationAction = "UNKNOWN"
 )
 
-// TableOperationMetrics contains operation counts for a specific table and type
+// TableOperationMetrics contains operation counts for a specific table and type.
 type TableOperationMetrics struct {
 	Namespace     string
 	Database      string
@@ -462,18 +462,18 @@ type TableOperationMetrics struct {
 	Deletes       int64
 }
 
-// LiveQueryMetrics contains all accumulated metrics
+// LiveQueryMetrics contains all accumulated metrics.
 type LiveQueryMetrics struct {
 	Tables    map[string]*TableOperationMetrics // key: tableID:operationType
 	Timestamp time.Time
 }
 
-// Key returns a unique key for this metric
+// Key returns a unique key for this metric.
 func (t *TableOperationMetrics) Key() string {
 	return fmt.Sprintf("%s:%s:%s:%s", t.Namespace, t.Database, t.Table, t.OperationType)
 }
 
-// StatsTableData contains operation counts from a side stats table for a specific table
+// StatsTableData contains operation counts from a side stats table for a specific table.
 type StatsTableData struct {
 	Namespace        string
 	Database         string
@@ -495,7 +495,7 @@ type StatsTableData struct {
 
 // OTel related structures
 
-// MetricType represents different Prometheus metric types
+// MetricType represents different Prometheus metric types.
 type MetricType int
 
 const (
@@ -506,7 +506,7 @@ const (
 	MetricTypeSummary
 )
 
-// String returns the string representation of MetricType
+// String returns the string representation of MetricType.
 func (m MetricType) String() string {
 	switch m {
 	case MetricTypeGauge:
@@ -522,7 +522,7 @@ func (m MetricType) String() string {
 	}
 }
 
-// Metric represents a domain metric independent of OTLP or Prometheus format
+// Metric represents a domain metric independent of OTLP or Prometheus format.
 type Metric struct {
 	Name          string
 	Type          MetricType
@@ -534,7 +534,7 @@ type Metric struct {
 	HistogramData *HistogramData
 }
 
-// HistogramData contains histogram-specific data with cumulative bucket counts
+// HistogramData contains histogram-specific data with cumulative bucket counts.
 type HistogramData struct {
 	Count       uint64
 	Sum         float64
@@ -542,20 +542,20 @@ type HistogramData struct {
 	CreatedTime time.Time
 }
 
-// HistogramBucket represents a single histogram bucket with cumulative count
+// HistogramBucket represents a single histogram bucket with cumulative count.
 type HistogramBucket struct {
 	UpperBound float64
 	Count      uint64
 }
 
-// MetricBatch represents a collection of metrics received together
+// MetricBatch represents a collection of metrics received together.
 type MetricBatch struct {
 	Metrics       []Metric
 	ReceivedAt    time.Time
 	ResourceAttrs map[string]string
 }
 
-// NewMetric creates a new metric with validation
+// NewMetric creates a new metric with validation.
 func NewMetric(name string, metricType MetricType) (*Metric, error) {
 	if name == "" {
 		return nil, errors.New("metric name cannot be empty")
@@ -568,7 +568,7 @@ func NewMetric(name string, metricType MetricType) (*Metric, error) {
 	}, nil
 }
 
-// AddLabel adds a label to the metric
+// AddLabel adds a label to the metric.
 func (m *Metric) AddLabel(key, value string) {
 	if m.Labels == nil {
 		m.Labels = make(map[string]string)
@@ -576,12 +576,12 @@ func (m *Metric) AddLabel(key, value string) {
 	m.Labels[key] = value
 }
 
-// IsValid checks if the metric has required fields
+// IsValid checks if the metric has required fields.
 func (m *Metric) IsValid() bool {
 	return m.Name != "" && m.Type != MetricTypeUnknown
 }
 
-// HasHistogramData returns true if this metric has histogram data
+// HasHistogramData returns true if this metric has histogram data.
 func (m *Metric) HasHistogramData() bool {
 	return m.Type == MetricTypeHistogram && m.HistogramData != nil
 }
@@ -589,7 +589,7 @@ func (m *Metric) HasHistogramData() bool {
 var invalidLabelCharRegex = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 // SanitizeLabelName converts OTEL attribute names to valid Prometheus label names.
-// Replaces invalid characters with underscores and ensures the name doesn't start with a number
+// Replaces invalid characters with underscores and ensures the name doesn't start with a number.
 func SanitizeLabelName(name string) string {
 	sanitized := invalidLabelCharRegex.ReplaceAllString(name, "_")
 
@@ -600,7 +600,7 @@ func SanitizeLabelName(name string) string {
 	return sanitized
 }
 
-// SanitizeMetricName converts OTEL metric names to Prometheus naming conventions
+// SanitizeMetricName converts OTEL metric names to Prometheus naming conventions.
 func SanitizeMetricName(name string, strategy string) string {
 	switch strategy {
 	case "UnderscoreEscapingWithSuffixes":
@@ -612,7 +612,7 @@ func SanitizeMetricName(name string, strategy string) string {
 	}
 }
 
-// underscoreEscaping replaces dots and invalid characters with underscores
+// underscoreEscaping replaces dots and invalid characters with underscores.
 func underscoreEscaping(name string) string {
 	name = strings.ReplaceAll(name, ".", "_")
 
@@ -621,7 +621,7 @@ func underscoreEscaping(name string) string {
 	return name
 }
 
-// UnitConversion defines how to convert a unit to Prometheus base units
+// UnitConversion defines how to convert a unit to Prometheus base units.
 type UnitConversion struct {
 	TargetUnit string
 	Multiplier float64
@@ -687,7 +687,7 @@ func GetEffectiveUnit(metricName, declaredUnit string) string {
 	return declaredUnit
 }
 
-// GetUnitConversion returns the conversion for a given unit, or nil if no conversion needed
+// GetUnitConversion returns the conversion for a given unit, or nil if no conversion needed.
 func GetUnitConversion(unit string) *UnitConversion {
 	if conv, ok := unitConversions[strings.ToLower(unit)]; ok {
 		return &conv
@@ -696,13 +696,13 @@ func GetUnitConversion(unit string) *UnitConversion {
 }
 
 // GetUnitConversionForMetric returns the conversion for a metric, taking into account
-// that some metrics may have incorrectly labeled units that should be overridden
+// that some metrics may have incorrectly labeled units that should be overridden.
 func GetUnitConversionForMetric(metricName, declaredUnit string) *UnitConversion {
 	effectiveUnit := GetEffectiveUnit(metricName, declaredUnit)
 	return GetUnitConversion(effectiveUnit)
 }
 
-// ConvertValue converts a value from the source unit to the Prometheus base unit
+// ConvertValue converts a value from the source unit to the Prometheus base unit.
 func ConvertValue(value float64, unit string) float64 {
 	if conv := GetUnitConversion(unit); conv != nil {
 		return value * conv.Multiplier
@@ -710,7 +710,7 @@ func ConvertValue(value float64, unit string) float64 {
 	return value
 }
 
-// ConvertValueForMetric converts a value taking into account metric-specific unit corrections
+// ConvertValueForMetric converts a value taking into account metric-specific unit corrections.
 func ConvertValueForMetric(value float64, metricName, declaredUnit string) float64 {
 	if conv := GetUnitConversionForMetric(metricName, declaredUnit); conv != nil {
 		return value * conv.Multiplier
@@ -718,7 +718,7 @@ func ConvertValueForMetric(value float64, metricName, declaredUnit string) float
 	return value
 }
 
-// GetTargetUnit returns the Prometheus base unit for a given OTLP unit
+// GetTargetUnit returns the Prometheus base unit for a given OTLP unit.
 func GetTargetUnit(unit string) string {
 	if conv := GetUnitConversion(unit); conv != nil {
 		return conv.TargetUnit
@@ -726,7 +726,7 @@ func GetTargetUnit(unit string) string {
 	return unit
 }
 
-// GetTargetUnitForMetric returns the Prometheus base unit, handling metric-specific corrections
+// GetTargetUnitForMetric returns the Prometheus base unit, handling metric-specific corrections.
 func GetTargetUnitForMetric(metricName, declaredUnit string) string {
 	effectiveUnit := GetEffectiveUnit(metricName, declaredUnit)
 	if conv := GetUnitConversion(effectiveUnit); conv != nil {
@@ -736,7 +736,7 @@ func GetTargetUnitForMetric(metricName, declaredUnit string) string {
 }
 
 // AddSuffixByType adds appropriate Prometheus suffix based on metric type and unit.
-// It converts units to Prometheus base units (e.g., ms -> seconds, mb -> bytes)
+// It converts units to Prometheus base units (e.g., ms -> seconds, mb -> bytes).
 func AddSuffixByType(name string, metricType MetricType, unit string) string {
 	targetUnit := GetTargetUnit(unit)
 
@@ -754,7 +754,7 @@ func AddSuffixByType(name string, metricType MetricType, unit string) string {
 	return name
 }
 
-// AddSuffixByTypeForMetric is like AddSuffixByType but handles metric-specific unit corrections
+// AddSuffixByTypeForMetric is like AddSuffixByType but handles metric-specific unit corrections.
 func AddSuffixByTypeForMetric(name, originalMetricName string, metricType MetricType, declaredUnit string) string {
 	targetUnit := GetTargetUnitForMetric(originalMetricName, declaredUnit)
 
@@ -772,7 +772,7 @@ func AddSuffixByTypeForMetric(name, originalMetricName string, metricType Metric
 	return name
 }
 
-// BucketsFromBounds creates histogram buckets from explicit bounds with cumulative counts
+// BucketsFromBounds creates histogram buckets from explicit bounds with cumulative counts.
 func BucketsFromBounds(bounds []float64, counts []uint64) []HistogramBucket {
 	buckets := make([]HistogramBucket, 0, len(bounds)+1)
 
@@ -793,7 +793,7 @@ func BucketsFromBounds(bounds []float64, counts []uint64) []HistogramBucket {
 	return buckets
 }
 
-// MetricsByType groups metrics by their type
+// MetricsByType groups metrics by their type.
 func (mb *MetricBatch) MetricsByType() map[MetricType][]Metric {
 	result := make(map[MetricType][]Metric)
 
@@ -804,17 +804,17 @@ func (mb *MetricBatch) MetricsByType() map[MetricType][]Metric {
 	return result
 }
 
-// Count returns the number of metrics in the batch
+// Count returns the number of metrics in the batch.
 func (mb *MetricBatch) Count() int {
 	return len(mb.Metrics)
 }
 
-// AddMetric adds a metric to the batch
+// AddMetric adds a metric to the batch.
 func (mb *MetricBatch) AddMetric(metric Metric) {
 	mb.Metrics = append(mb.Metrics, metric)
 }
 
-// Filter filters metrics by a predicate function
+// Filter filters metrics by a predicate function.
 func (mb *MetricBatch) Filter(predicate func(Metric) bool) *MetricBatch {
 	filtered := &MetricBatch{
 		ReceivedAt:    mb.ReceivedAt,

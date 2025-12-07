@@ -38,7 +38,7 @@ var (
 	tableFilterPatternRegex = regexp.MustCompile(`^[a-zA-Z0-9_*]+:[a-zA-Z0-9_*]+:[a-zA-Z0-9_*]+$`)
 )
 
-// Config interface for external packages
+// Config interface for external packages.
 type Config interface {
 	OTLPBatchingEnabled() bool
 	OTLPBatchTimeoutMs() int
@@ -51,7 +51,7 @@ type Config interface {
 	DeploymentMode() string
 }
 
-// unexported root config type
+// unexported root config type.
 type config struct {
 	Exporter   exporterConfig   `yaml:"exporter"`
 	SurrealDB  surrealDBConfig  `yaml:"surrealdb"`
@@ -150,14 +150,14 @@ func Load(path string) (*config, error) {
 	return cfg, nil
 }
 
-// validateAndFix validates configuration and fixes misconfigurations with warnings
+// validateAndFix validates configuration and fixes misconfigurations with warnings.
 func validateAndFix(cfg *config) {
 	validateExporterConfig(cfg)
 	validateSurrealDBConfig(cfg)
 	validateCollectorsConfig(cfg)
 }
 
-// validateExporterConfig validates exporter settings
+// validateExporterConfig validates exporter settings.
 func validateExporterConfig(cfg *config) {
 	if cfg.Exporter.Port < MinPort || cfg.Exporter.Port > MaxPort {
 		slog.Warn("exporter port is out of valid range, using default",
@@ -191,7 +191,7 @@ func validateExporterConfig(cfg *config) {
 	}
 }
 
-// validateSurrealDBConfig validates SurrealDB connection settings
+// validateSurrealDBConfig validates SurrealDB connection settings.
 func validateSurrealDBConfig(cfg *config) {
 	if strings.TrimSpace(cfg.SurrealDB.ClusterName) == "" {
 		slog.Warn("cluster_name is empty, using default value",
@@ -238,7 +238,7 @@ func validateSurrealDBConfig(cfg *config) {
 	}
 }
 
-// validateCollectorsConfig validates collectors settings
+// validateCollectorsConfig validates collectors settings.
 func validateCollectorsConfig(cfg *config) {
 	if cfg.Collectors.LiveQuery.Enabled && cfg.SurrealDB.DeploymentMode != "single" {
 		slog.Warn("live_query collector is only available for 'single' deployment_mode, disabling it",
@@ -258,7 +258,7 @@ func validateCollectorsConfig(cfg *config) {
 	validateOpenTelemetryConfig(cfg)
 }
 
-// validateTablePatterns validates and filters invalid table patterns
+// validateTablePatterns validates and filters invalid table patterns.
 func validateTablePatterns(fieldName string, patterns *[]string) {
 	if patterns == nil || len(*patterns) == 0 {
 		return
@@ -278,7 +278,7 @@ func validateTablePatterns(fieldName string, patterns *[]string) {
 	*patterns = validPatterns
 }
 
-// validateOpenTelemetryConfig validates OpenTelemetry collector settings
+// validateOpenTelemetryConfig validates OpenTelemetry collector settings.
 func validateOpenTelemetryConfig(cfg *config) {
 	otel := &cfg.Collectors.OpenTelemetry
 
@@ -389,7 +389,6 @@ func applyEnvironmentOverrides(cfg *config) {
 			cfg.SurrealDB.Host = parsed.Host
 			cfg.SurrealDB.Port = parsed.Port()
 		}
-
 	}
 	if username := os.Getenv("SURREALDB_USERNAME"); username != "" {
 		cfg.SurrealDB.Username = username

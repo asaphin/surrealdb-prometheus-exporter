@@ -6,14 +6,14 @@ import (
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/domain"
 )
 
-// tableFilter filters tables based on include/exclude patterns
+// tableFilter filters tables based on include/exclude patterns.
 type tableFilter struct {
 	includePatterns []string
 	excludePatterns []string
 	hasIncludes     bool
 }
 
-// NewTableFilter creates a new table filter
+// NewTableFilter creates a new table filter.
 func NewTableFilter(includePatterns, excludePatterns []string) *tableFilter {
 	return &tableFilter{
 		includePatterns: includePatterns,
@@ -22,7 +22,7 @@ func NewTableFilter(includePatterns, excludePatterns []string) *tableFilter {
 	}
 }
 
-// shouldMonitor determines if a table should be monitored
+// shouldMonitor determines if a table should be monitored.
 func (f *tableFilter) shouldMonitor(tableID domain.TableIdentifier) bool {
 	identifier := tableID.String()
 
@@ -48,7 +48,7 @@ func (f *tableFilter) shouldMonitor(tableID domain.TableIdentifier) bool {
 	return true
 }
 
-// FilterTables returns tables that should be monitored
+// FilterTables returns tables that should be monitored.
 func (f *tableFilter) FilterTables(tables []*domain.TableInfo) []domain.TableIdentifier {
 	var filtered []domain.TableIdentifier
 
@@ -67,7 +67,7 @@ func (f *tableFilter) FilterTables(tables []*domain.TableInfo) []domain.TableIde
 	return filtered
 }
 
-// matchesPattern checks if identifier matches glob pattern
+// matchesPattern checks if identifier matches glob pattern.
 func matchesPattern(identifier, pattern string) bool {
 	matched, err := filepath.Match(pattern, identifier)
 	if err != nil {

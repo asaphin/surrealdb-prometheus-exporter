@@ -12,7 +12,7 @@ import (
 	sdk "github.com/surrealdb/surrealdb.go"
 )
 
-// statsRecord represents a record from the stats table
+// statsRecord represents a record from the stats table.
 type statsRecord struct {
 	TargetTable      string    `json:"target_table"`
 	CreateRelational int64     `json:"create_relational"`
@@ -30,7 +30,7 @@ type statsRecord struct {
 	LastUpdate       time.Time `json:"last_update"`
 }
 
-// StatsTableManager manages side tables for collecting operation statistics
+// StatsTableManager manages side tables for collecting operation statistics.
 type StatsTableManager struct {
 	connManager        ConnectionManager
 	removeOrphanTables bool
@@ -43,14 +43,13 @@ type StatsTableManager struct {
 	cancel context.CancelFunc
 }
 
-// statsTableState tracks state for a single stats table
+// statsTableState tracks state for a single stats table.
 type statsTableState struct {
 	targetTableID  domain.TableIdentifier
 	statsTableName string
-	db             *sdk.DB
 }
 
-// NewStatsTableManager creates a new stats table manager
+// NewStatsTableManager creates a new stats table manager.
 func NewStatsTableManager(
 	connManager ConnectionManager,
 	removeOrphanTables bool,
@@ -68,7 +67,7 @@ func NewStatsTableManager(
 	}
 }
 
-// StatsTableInfo returns stats from all side tables and reconciles tables
+// StatsTableInfo returns stats from all side tables and reconciles tables.
 func (m *StatsTableManager) StatsTableInfo(tableIDs []domain.TableIdentifier) ([]*domain.StatsTableData, error) {
 	statsData, err := m.queryAllStatsTables(tableIDs)
 	if err != nil {
@@ -80,14 +79,14 @@ func (m *StatsTableManager) StatsTableInfo(tableIDs []domain.TableIdentifier) ([
 	return statsData, nil
 }
 
-// Stop gracefully shuts down the manager
+// Stop gracefully shuts down the manager.
 func (m *StatsTableManager) Stop() {
 	slog.Info("Stopping stats table manager")
 	m.cancel()
 	slog.Info("Stats table manager stopped")
 }
 
-// queryAllStatsTables queries all stats tables for the given table IDs
+// queryAllStatsTables queries all stats tables for the given table IDs.
 func (m *StatsTableManager) queryAllStatsTables(tableIDs []domain.TableIdentifier) ([]*domain.StatsTableData, error) {
 	var result []*domain.StatsTableData
 	var mu sync.Mutex
@@ -123,7 +122,7 @@ func (m *StatsTableManager) queryAllStatsTables(tableIDs []domain.TableIdentifie
 	return result, nil
 }
 
-// queryStatsTable queries a single stats table
+// queryStatsTable queries a single stats table.
 func (m *StatsTableManager) queryStatsTable(tableID domain.TableIdentifier) (*domain.StatsTableData, error) {
 	ctx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
 	defer cancel()
@@ -183,7 +182,7 @@ func (m *StatsTableManager) queryStatsTable(tableID domain.TableIdentifier) (*do
 	return data, nil
 }
 
-// reconcileTables creates new stats tables and removes orphans
+// reconcileTables creates new stats tables and removes orphans.
 func (m *StatsTableManager) reconcileTables(desiredTables []domain.TableIdentifier) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -222,7 +221,7 @@ func (m *StatsTableManager) reconcileTables(desiredTables []domain.TableIdentifi
 	}
 }
 
-// createStatsTable creates a side stats table and sets up events
+// createStatsTable creates a side stats table and sets up events.
 func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) error {
 	ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
 	defer cancel()
@@ -362,7 +361,7 @@ func (m *StatsTableManager) createStatsTable(tableID domain.TableIdentifier) err
 	return nil
 }
 
-// removeStatsTable removes a stats table and its events
+// removeStatsTable removes a stats table and its events.
 func (m *StatsTableManager) removeStatsTable(state *statsTableState) error {
 	ctx, cancel := context.WithTimeout(m.ctx, 10*time.Second)
 	defer cancel()
@@ -406,7 +405,7 @@ func (m *StatsTableManager) removeStatsTable(state *statsTableState) error {
 	return nil
 }
 
-// getStatsTableName returns the stats table name for a given table
+// getStatsTableName returns the stats table name for a given table.
 func (m *StatsTableManager) getStatsTableName(tableName string) string {
 	return m.sideTablePrefix + tableName
 }

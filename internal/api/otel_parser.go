@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-// ConvertPmetricToDomain converts OTLP pmetric.Metrics to domain.MetricBatch
+// ConvertPmetricToDomain converts OTLP pmetric.Metrics to domain.MetricBatch.
 func ConvertPmetricToDomain(md pmetric.Metrics) domain.MetricBatch {
 	batch := domain.MetricBatch{
 		ReceivedAt:    time.Now(),
@@ -53,7 +53,7 @@ func ConvertPmetricToDomain(md pmetric.Metrics) domain.MetricBatch {
 	return batch
 }
 
-// convertGauge converts OTLP gauge metrics to domain metrics
+// convertGauge converts OTLP gauge metrics to domain metrics.
 func convertGauge(metric pmetric.Metric) []domain.Metric {
 	var metrics []domain.Metric
 	gauge := metric.Gauge()
@@ -84,7 +84,7 @@ func convertGauge(metric pmetric.Metric) []domain.Metric {
 }
 
 // convertSum converts OTLP sum metrics to domain metrics.
-// Determines if it's a counter (monotonic) or gauge (non-monotonic)
+// Determines if it's a counter (monotonic) or gauge (non-monotonic).
 func convertSum(metric pmetric.Metric) []domain.Metric {
 	var metrics []domain.Metric
 	sum := metric.Sum()
@@ -119,7 +119,7 @@ func convertSum(metric pmetric.Metric) []domain.Metric {
 	return metrics
 }
 
-// convertHistogram converts OTLP histogram metrics to domain metrics
+// convertHistogram converts OTLP histogram metrics to domain metrics.
 func convertHistogram(metric pmetric.Metric) []domain.Metric {
 	var metrics []domain.Metric
 	hist := metric.Histogram()
@@ -171,7 +171,7 @@ func convertHistogram(metric pmetric.Metric) []domain.Metric {
 	return metrics
 }
 
-// convertSummary converts OTLP summary metrics to domain metrics
+// convertSummary converts OTLP summary metrics to domain metrics.
 func convertSummary(metric pmetric.Metric) []domain.Metric {
 	var metrics []domain.Metric
 	summary := metric.Summary()
@@ -223,7 +223,7 @@ func convertSummary(metric pmetric.Metric) []domain.Metric {
 	return metrics
 }
 
-// extractLabels extracts labels from OTLP attributes
+// extractLabels extracts labels from OTLP attributes.
 func extractLabels(attrs pcommon.Map) map[string]string {
 	labels := make(map[string]string)
 	attrs.Range(func(k string, v pcommon.Value) bool {
@@ -233,7 +233,7 @@ func extractLabels(attrs pcommon.Map) map[string]string {
 	return labels
 }
 
-// formatFloat formats a float64 value for use in label values
+// formatFloat formats a float64 value for use in label values.
 func formatFloat(f float64) string {
 	// Use %g format to avoid unnecessary trailing zeros
 	return fmt.Sprintf("%g", f)

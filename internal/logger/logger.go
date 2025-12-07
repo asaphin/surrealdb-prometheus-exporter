@@ -37,13 +37,13 @@ func Configure(cfg Config) {
 
 	logger := slog.New(handler)
 
-	//attrs := make([]slog.Attr, 0)
+	// attrs := make([]slog.Attr, 0)
 	//
-	//for key, value := range cfg.CustomAttributes() {
+	// for key, value := range cfg.CustomAttributes() {
 	//	attrs = append(attrs, slog.Any(key, value))
 	//}
 	//
-	//logger = logger.With(attrs) // TODO update because of !BADKEY
+	// logger = logger.With(attrs) // TODO update because of !BADKEY
 
 	slog.SetDefault(logger)
 }

@@ -1,0 +1,389 @@
+# .golangci.yml for surrealdb-prometheus-exporter
+# Based on https://gist.github.com/maratori/47a4d00457a92aa426dbd48a18776322
+# Adapted for Prometheus exporter patterns
+
+version: "2"
+
+run:
+  # Target Go version - adjust to match your go.mod
+  go: '1.24'
+  # Timeout for local development (generous for large codebases)
+  timeout: 10m
+  # Include test files in analysis
+  tests: true
+  # Build tags if needed
+  build-tags: []
+  # Concurrency - adjust based on your machine
+  concurrency: 4
+
+issues:
+  # Report all issues, don't limit
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  # Sort results for consistent output
+  sort-order:
+    - linter
+    - file
+
+formatters:
+  enable:
+    - goimports   # Organizes imports, groups local packages
+    - golines     # Fixes long lines automatically
+  settings:
+    goimports:
+      # Group local imports separately - CHANGE THIS to your module path
+      local-prefixes:
+        - github.com/yourusername/surrealdb-prometheus-exporter
+    golines:
+      max-len: 120
+
+linters:
+  # Don't use default: all - it includes deprecated linters
+  # Start with standard and add specific linters
+  default: none
+  enable:
+    # ============================================
+    # BUG DETECTION (highest priority)
+    # ============================================
+    - asasalint         # []any passed as any in variadic funcs
+    - bidichk           # Dangerous unicode sequences
+    - bodyclose         # HTTP response body closure - CRITICAL for exporters
+    - contextcheck      # Non-inherited context usage
+    - durationcheck     # Two durations multiplied together
+    - errcheck          # Unchecked errors
+    - errorlint         # Go 1.13+ error wrapping
+    - govet             # Suspicious constructs
+    - makezero          # Slice declarations with non-zero length
+    - nilerr            # Returns nil when error is not nil
+    - nilnesserr        # err != nil but returns different nil error
+    - nilnil            # Simultaneous nil error and invalid value
+    - noctx             # HTTP requests without context
+    - rowserrcheck      # sql.Rows.Err not checked
+    - sqlclosecheck     # sql.Rows/Stmt not closed
+    - staticcheck       # Go vet on steroids (150+ checks)
+
+    # ============================================
+    # SECURITY
+    # ============================================
+    - gosec             # Security problems
+
+    # ============================================
+    # PERFORMANCE
+    # ============================================
+    - copyloopvar       # Loop variable copies (Go 1.22+)
+    - exptostd          # golang.org/x/exp replaceable by std
+    - intrange          # Integer ranges in for loops
+    - perfsprint        # fmt.Sprintf replaceable with faster alternatives
+    - prealloc          # Slice pre-allocation opportunities
+
+    # ============================================
+    # PROMETHEUS-SPECIFIC
+    # ============================================
+    - promlinter        # Prometheus metrics naming conventions
+
+    # ============================================
+    # ERROR HANDLING
+    # ============================================
+    - errname           # Sentinel errors prefixed with Err
+    - wrapcheck         # Errors from external packages are wrapped
+
+    # ============================================
+    # CODE QUALITY & STYLE
+    # ============================================
+    - asciicheck        # Non-ASCII identifiers
+    - canonicalheader   # net/http.Header canonical headers
+    - cyclop            # Cyclomatic complexity
+    - dupl              # Code clone detection
+    - exhaustive        # Enum switch exhaustiveness
+    - fatcontext        # Nested contexts in loops
+    - funlen            # Long functions
+    - gocognit          # Cognitive complexity
+    - goconst           # Repeated strings as constants
+    - gocritic          # Diagnostics for bugs, performance, style
+    - gocyclo           # Cyclomatic complexity
+    - godot             # Comments end in period
+    - goprintffuncname  # Printf-like functions named with f
+    - ineffassign       # Unused variable assignments
+    - misspell          # Misspelled English words
+    - mirror            # Wrong mirror patterns bytes/strings
+    - mnd               # Magic numbers
+    - modernize         # Modern Go idioms (Go 1.24+)
+    - musttag           # Field tags in marshaled structs
+    - nakedret          # Naked returns in long functions
+    - nestif            # Deeply nested if statements
+    - nolintlint        # Ill-formed nolint directives
+    - nonamedreturns    # Named returns
+    - predeclared       # Shadowed predeclared identifiers
+    - reassign          # Package variable reassignment
+    - recvcheck         # Receiver type consistency
+    - revive            # Fast, configurable linter (golint replacement)
+    - sloglint          # log/slog consistency
+    - spancheck         # OpenTelemetry/Census span mistakes
+    - unconvert         # Unnecessary type conversions
+    - unparam           # Unused function parameters
+    - unused            # Unused code
+    - usestdlibvars     # Stdlib vars/constants usage
+    - wastedassign      # Wasted assignments
+    - whitespace        # Leading/trailing whitespace
+
+    # ============================================
+    # TESTING
+    # ============================================
+    - testableexamples  # Testable examples
+    - testifylint       # testify usage
+    - tparallel         # Inappropriate t.Parallel() usage
+    - usetesting        # Functions with testing package replacements
+
+    # ============================================
+    # MODULES & IMPORTS
+    # ============================================
+    - depguard          # Package import allow/block lists
+    - gocheckcompilerdirectives  # //go: directive validation
+    - gomoddirectives   # replace/retract/exclude in go.mod
+
+    # ============================================
+    # DOCUMENTATION
+    # ============================================
+    - godoclint         # GoDoc practices
+
+  # ============================================
+  # EXPLICITLY DISABLED - with reasons
+  # ============================================
+  disable:
+    # INCOMPATIBLE with Prometheus exporter patterns
+    - gochecknoglobals  # Prometheus metrics are package-level globals
+    - gochecknoinits    # prometheus.MustRegister() commonly in init()
+
+    # TOO NOISY / STRICT
+    - exhaustruct       # Too many false positives with partial struct init
+    - varnamelen        # Flags idiomatic short names (t, ctx, err, i)
+    - nlreturn          # Forces blank lines even in trivial functions
+    - wsl               # Deprecated, use wsl_v5
+    - wsl_v5            # Too opinionated, conflicts with other linters
+    - paralleltest      # No strong justification, many false positives
+    - forcetypeassert   # Replaced by errcheck with check-type-assertions
+    - lll               # Replaced by golines formatter
+    - sloglint          # Prefer global logger for simplicity
+
+    # REDUNDANT OR REPLACED
+    - gomodguard        # Use depguard instead (more powerful)
+    - ireturn           # Configuration causes cascading issues
+    - containedctx      # Context in struct is sometimes valid
+    - err113            # Too strict for most codebases
+    - dogsled           # Rarely useful
+    - testpackage       # Separate _test package not always practical
+
+  settings:
+    cyclop:
+      max-complexity: 20
+      package-average: 10.0
+
+    depguard:
+      rules:
+        deprecated:
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/golang/protobuf
+              desc: Use google.golang.org/protobuf instead
+            - pkg: github.com/satori/go.uuid
+              desc: Use github.com/google/uuid instead (unmaintained)
+            - pkg: github.com/gofrs/uuid$
+              desc: Use github.com/gofrs/uuid/v5 or later
+        non-test:
+          files:
+            - "!$test"
+          deny:
+            - pkg: math/rand$
+              desc: Use math/rand/v2 instead (Go 1.22+)
+        non-main:
+          files:
+            - "!**/main.go"
+          deny:
+            - pkg: log$
+              desc: Use log/slog instead for structured logging
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+      exclude-functions:
+        # Common Prometheus exporter patterns
+        - (github.com/prometheus/client_golang/prometheus.Registerer).Register
+        - (github.com/prometheus/client_golang/prometheus.Registerer).MustRegister
+        - (*github.com/prometheus/client_golang/prometheus.Registry).Register
+
+    exhaustive:
+      check:
+        - switch
+        - map
+      default-signifies-exhaustive: true
+
+    funlen:
+      lines: 100
+      statements: 60
+
+    gocognit:
+      min-complexity: 25
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - whyNoLint  # Handled by nolintlint
+      settings:
+        captLocal:
+          paramsOnly: false
+        underef:
+          skipRecvDeref: false
+
+    gocyclo:
+      min-complexity: 20
+
+    godot:
+      scope: declarations
+      capital: false
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # Premature optimization
+      settings:
+        shadow:
+          strict: true
+
+    mnd:
+      ignored-numbers:
+        - '0'
+        - '1'
+        - '2'
+        - '10'
+        - '100'
+      ignored-functions:
+        - os.Chmod
+        - os.Mkdir*
+        - os.OpenFile
+        - os.WriteFile
+        - prometheus.ExponentialBuckets*
+        - prometheus.LinearBuckets
+        - strconv.*
+
+    nakedret:
+      max-func-lines: 0
+
+    nestif:
+      min-complexity: 5
+
+    nolintlint:
+      allow-no-explanation:
+        - funlen
+        - gocognit
+        - golines
+      require-explanation: true
+      require-specific: true
+
+    perfsprint:
+      strconcat: false
+
+    prealloc:
+      simple: true
+      for-loops: true
+
+    promlinter:
+      strict: true
+
+    reassign:
+      patterns:
+        - ".*"
+
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+          disabled: true  # Too strict for incremental adoption
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+          disabled: true  # Often not practical
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+    sloglint:
+      no-global: all
+      context: scope
+      key-naming-case: snake
+
+    staticcheck:
+      checks:
+        - all
+        - -ST1000  # Package comment format
+        - -ST1016  # Receiver name consistency (too strict)
+        - -QF1008  # Embedded field selector
+
+  exclusions:
+    warn-unused: true
+    presets:
+      - std-error-handling
+      - common-false-positives
+    generated: strict
+    rules:
+      # Allow TODOs without periods
+      - source: 'TODO'
+        linters: [godot]
+
+      # Relax comment requirements
+      - text: 'should have a package comment'
+        linters: [revive]
+      - text: 'exported .* should have comment'
+        linters: [revive]
+
+      # Test file relaxations
+      - path: '_test\.go'
+        linters:
+          - bodyclose
+          - dupl
+          - errcheck
+          - funlen
+          - goconst
+          - gosec
+          - mnd
+          - noctx
+          - wrapcheck
+
+      # Allow magic numbers in test files
+      - path: '_test\.go'
+        linters: [mnd]
+
+      # Generated code
+      - path: '\.pb\.go$'
+        linters: [all]
+      - path: '_gen\.go$'
+        linters: [all]
+
+      # Main packages often have different patterns
+      - path: 'main\.go$'
+        linters:
+          - gochecknoglobals
+          - funlen

@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"sync"
 	"time"
 
@@ -10,24 +11,24 @@ import (
 	"github.com/asaphin/surrealdb-prometheus-exporter/internal/domain"
 )
 
-// Processor defines the interface for metric processing
+// Processor defines the interface for metric processing.
 type Processor interface {
 	Process(ctx context.Context, batch domain.MetricBatch) error
 }
 
-// Chain chains multiple processors together
+// Chain chains multiple processors together.
 type Chain struct {
 	processors []Processor
 }
 
-// NewChain creates a new processor chain
+// NewChain creates a new processor chain.
 func NewChain(processors ...Processor) *Chain {
 	return &Chain{
 		processors: processors,
 	}
 }
 
-// Process processes a batch through all processors in the chain
+// Process processes a batch through all processors in the chain.
 func (c *Chain) Process(ctx context.Context, batch domain.MetricBatch) error {
 	for _, processor := range c.processors {
 		if err := processor.Process(ctx, batch); err != nil {
@@ -38,7 +39,7 @@ func (c *Chain) Process(ctx context.Context, batch domain.MetricBatch) error {
 	return nil
 }
 
-// BatchProcessor accumulates metrics and processes them in batches
+// BatchProcessor accumulates metrics and processes them in batches.
 type BatchProcessor struct {
 	converter    *converter.Converter
 	batchSize    int
@@ -50,7 +51,7 @@ type BatchProcessor struct {
 	flushChan    chan struct{}
 }
 
-// NewBatchProcessor creates a new batch processor
+// NewBatchProcessor creates a new batch processor.
 func NewBatchProcessor(conv *converter.Converter, batchSize int, batchTimeout time.Duration) *BatchProcessor {
 	bp := &BatchProcessor{
 		converter:    conv,
@@ -69,16 +70,14 @@ func NewBatchProcessor(conv *converter.Converter, batchSize int, batchTimeout ti
 	return bp
 }
 
-// Process adds metrics to the batch and flushes if necessary
+// Process adds metrics to the batch and flushes if necessary.
 func (p *BatchProcessor) Process(ctx context.Context, batch domain.MetricBatch) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	p.currentBatch.Metrics = append(p.currentBatch.Metrics, batch.Metrics...)
 
-	for k, v := range batch.ResourceAttrs {
-		p.currentBatch.ResourceAttrs[k] = v
-	}
+	maps.Copy(p.currentBatch.ResourceAttrs, batch.ResourceAttrs)
 
 	if p.currentBatch.ReceivedAt.IsZero() {
 		p.currentBatch.ReceivedAt = batch.ReceivedAt
@@ -102,7 +101,7 @@ func (p *BatchProcessor) Process(ctx context.Context, batch domain.MetricBatch) 
 	return nil
 }
 
-// flushLocked flushes the current batch (caller must hold lock)
+// flushLocked flushes the current batch (caller must hold lock).
 func (p *BatchProcessor) flushLocked() error {
 	if len(p.currentBatch.Metrics) == 0 {
 		return nil
@@ -124,14 +123,14 @@ func (p *BatchProcessor) flushLocked() error {
 	return nil
 }
 
-// Flush flushes the current batch
+// Flush flushes the current batch.
 func (p *BatchProcessor) Flush() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.flushLocked()
 }
 
-// backgroundFlusher periodically flushes batches
+// backgroundFlusher periodically flushes batches.
 func (p *BatchProcessor) backgroundFlusher() {
 	for {
 		select {
@@ -145,25 +144,25 @@ func (p *BatchProcessor) backgroundFlusher() {
 	}
 }
 
-// Stop stops the batch processor
+// Stop stops the batch processor.
 func (p *BatchProcessor) Stop() {
 	close(p.stopChan)
 	p.Flush()
 }
 
-// DirectProcessor processes metrics immediately without batching
+// DirectProcessor processes metrics immediately without batching.
 type DirectProcessor struct {
 	converter *converter.Converter
 }
 
-// NewDirectProcessor creates a new direct processor
+// NewDirectProcessor creates a new direct processor.
 func NewDirectProcessor(conv *converter.Converter) *DirectProcessor {
 	return &DirectProcessor{
 		converter: conv,
 	}
 }
 
-// Process processes metrics directly
+// Process processes metrics directly.
 func (dp *DirectProcessor) Process(ctx context.Context, batch domain.MetricBatch) error {
 	return dp.converter.Convert(batch)
 }

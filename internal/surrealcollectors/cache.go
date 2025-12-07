@@ -16,7 +16,7 @@ var (
 	once     sync.Once
 )
 
-// getTableInfoCache returns the singleton instance of tableInfoCache
+// getTableInfoCache returns the singleton instance of tableInfoCache.
 func getTableInfoCache() *tableInfoCache {
 	once.Do(func() {
 		instance = &tableInfoCache{
@@ -27,7 +27,7 @@ func getTableInfoCache() *tableInfoCache {
 	return instance
 }
 
-// set stores the table information in the cache
+// set stores the table information in the cache.
 func (c *tableInfoCache) set(tables []*domain.TableInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -35,7 +35,7 @@ func (c *tableInfoCache) set(tables []*domain.TableInfo) {
 	c.tables = tables
 }
 
-// get retrieves the table information from the cache
+// get retrieves the table information from the cache.
 func (c *tableInfoCache) get() []*domain.TableInfo {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -45,7 +45,7 @@ func (c *tableInfoCache) get() []*domain.TableInfo {
 	return result
 }
 
-// clear removes all table information from the cache
+// clear removes all table information from the cache.
 func (c *tableInfoCache) clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()

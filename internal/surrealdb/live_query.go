@@ -2,6 +2,7 @@ package surrealdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -13,7 +14,7 @@ import (
 	"github.com/surrealdb/surrealdb.go/pkg/models"
 )
 
-// LiveQueryManager manages live queries and accumulates metrics
+// LiveQueryManager manages live queries and accumulates metrics.
 type LiveQueryManager struct {
 	connManager          ConnectionManager
 	accumulator          *OperationAccumulator
@@ -29,7 +30,7 @@ type LiveQueryManager struct {
 	wg     sync.WaitGroup
 }
 
-// liveQueryState tracks state for a single live query
+// liveQueryState tracks state for a single live query.
 type liveQueryState struct {
 	tableID   domain.TableIdentifier
 	db        *sdk.DB
@@ -37,7 +38,7 @@ type liveQueryState struct {
 	cancelCtx context.CancelFunc
 }
 
-// NewLiveQueryManager creates a new live query manager
+// NewLiveQueryManager creates a new live query manager.
 func NewLiveQueryManager(
 	connManager ConnectionManager,
 	reconnectDelay time.Duration,
@@ -58,7 +59,7 @@ func NewLiveQueryManager(
 }
 
 // LiveQueryInfo returns accumulated metrics and reconciles live queries.
-// This is the main entry point called by the collector on each scrape
+// This is the main entry point called by the collector on each scrape.
 func (m *LiveQueryManager) LiveQueryInfo(tableIDs []domain.TableIdentifier) ([]*domain.TableOperationMetrics, error) {
 	metrics := m.accumulator.GetAndClear()
 
@@ -67,7 +68,7 @@ func (m *LiveQueryManager) LiveQueryInfo(tableIDs []domain.TableIdentifier) ([]*
 	return metrics, nil
 }
 
-// Stop gracefully shuts down all live queries
+// Stop gracefully shuts down all live queries.
 func (m *LiveQueryManager) Stop() {
 	slog.Info("Stopping live query manager")
 	m.cancel()
@@ -75,7 +76,7 @@ func (m *LiveQueryManager) Stop() {
 	slog.Info("Live query manager stopped")
 }
 
-// reconcileQueries updates active queries to match desired table list
+// reconcileQueries updates active queries to match desired table list.
 func (m *LiveQueryManager) reconcileQueries(desiredTables []domain.TableIdentifier) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -102,7 +103,7 @@ func (m *LiveQueryManager) reconcileQueries(desiredTables []domain.TableIdentifi
 	}
 }
 
-// manageLiveQuery manages a single live query with reconnection
+// manageLiveQuery manages a single live query with reconnection.
 func (m *LiveQueryManager) manageLiveQuery(tableID domain.TableIdentifier) {
 	defer m.wg.Done()
 
@@ -148,7 +149,7 @@ func (m *LiveQueryManager) manageLiveQuery(tableID domain.TableIdentifier) {
 	}
 }
 
-// runLiveQuery executes a single live query
+// runLiveQuery executes a single live query.
 func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 	ctx, cancel := context.WithCancel(m.ctx)
 	defer cancel()
@@ -185,7 +186,7 @@ func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 	}
 
 	if notifications == nil {
-		return fmt.Errorf("notifications channel is nil")
+		return errors.New("notifications channel is nil")
 	}
 
 	for {
@@ -195,14 +196,14 @@ func (m *LiveQueryManager) runLiveQuery(tableID domain.TableIdentifier) error {
 
 		case notification, ok := <-notifications:
 			if !ok {
-				return fmt.Errorf("notifications channel closed")
+				return errors.New("notifications channel closed")
 			}
 			m.processNotification(tableID, notification)
 		}
 	}
 }
 
-// processNotification handles a live query notification
+// processNotification handles a live query notification.
 func (m *LiveQueryManager) processNotification(
 	tableID domain.TableIdentifier,
 	notification sconn.Notification,
@@ -252,21 +253,21 @@ func (m *LiveQueryManager) processNotification(
 	)
 }
 
-// OperationTypeDetector analyzes record data to determine operation type
+// OperationTypeDetector analyzes record data to determine operation type.
 type OperationTypeDetector struct{}
 
-// NewOperationTypeDetector creates a new detector
+// NewOperationTypeDetector creates a new detector.
 func NewOperationTypeDetector() *OperationTypeDetector {
 	return &OperationTypeDetector{}
 }
 
-// DetectFromRecord analyzes a record's structure to determine operation type
-func (d *OperationTypeDetector) DetectFromRecord(record interface{}) domain.OperationType {
+// DetectFromRecord analyzes a record's structure to determine operation type.
+func (d *OperationTypeDetector) DetectFromRecord(record any) domain.OperationType {
 	if record == nil {
 		return domain.OperationTypeUnknown
 	}
 
-	recordMap, ok := record.(map[string]interface{})
+	recordMap, ok := record.(map[string]any)
 	if !ok {
 		return domain.OperationTypeUnknown
 	}
@@ -286,8 +287,8 @@ func (d *OperationTypeDetector) DetectFromRecord(record interface{}) domain.Oper
 	return domain.OperationTypeDocument
 }
 
-// isGraphRecord checks if record has graph edge characteristics
-func (d *OperationTypeDetector) isGraphRecord(record map[string]interface{}) bool {
+// isGraphRecord checks if record has graph edge characteristics.
+func (d *OperationTypeDetector) isGraphRecord(record map[string]any) bool {
 	hasIn := false
 	hasOut := false
 
@@ -303,8 +304,8 @@ func (d *OperationTypeDetector) isGraphRecord(record map[string]interface{}) boo
 	return hasIn && hasOut
 }
 
-// isKeyValueRecord checks if record has key-value characteristics
-func (d *OperationTypeDetector) isKeyValueRecord(record map[string]interface{}) bool {
+// isKeyValueRecord checks if record has key-value characteristics.
+func (d *OperationTypeDetector) isKeyValueRecord(record map[string]any) bool {
 	fieldCount := 0
 	for key := range record {
 		if key != "id" {
@@ -315,8 +316,8 @@ func (d *OperationTypeDetector) isKeyValueRecord(record map[string]interface{}) 
 	return fieldCount <= 2 && fieldCount > 0
 }
 
-// isRelationalRecord checks if record has relational characteristics
-func (d *OperationTypeDetector) isRelationalRecord(record map[string]interface{}) bool {
+// isRelationalRecord checks if record has relational characteristics.
+func (d *OperationTypeDetector) isRelationalRecord(record map[string]any) bool {
 	scalarCount := 0
 	complexCount := 0
 
@@ -326,7 +327,7 @@ func (d *OperationTypeDetector) isRelationalRecord(record map[string]interface{}
 		}
 
 		switch value.(type) {
-		case map[string]interface{}, []interface{}:
+		case map[string]any, []any:
 			complexCount++
 		default:
 			scalarCount++
@@ -336,20 +337,20 @@ func (d *OperationTypeDetector) isRelationalRecord(record map[string]interface{}
 	return scalarCount >= 3 && complexCount <= 1
 }
 
-// OperationAccumulator thread-safely accumulates operation counts
+// OperationAccumulator thread-safely accumulates operation counts.
 type OperationAccumulator struct {
 	metrics map[string]*domain.TableOperationMetrics
 	mu      sync.RWMutex
 }
 
-// NewOperationAccumulator creates a new accumulator
+// NewOperationAccumulator creates a new accumulator.
 func NewOperationAccumulator() *OperationAccumulator {
 	return &OperationAccumulator{
 		metrics: make(map[string]*domain.TableOperationMetrics),
 	}
 }
 
-// Record records an operation
+// Record records an operation.
 func (a *OperationAccumulator) Record(
 	tableID domain.TableIdentifier,
 	opType domain.OperationType,
@@ -381,7 +382,7 @@ func (a *OperationAccumulator) Record(
 	}
 }
 
-// GetAndClear returns all metrics and clears the accumulator
+// GetAndClear returns all metrics and clears the accumulator.
 func (a *OperationAccumulator) GetAndClear() []*domain.TableOperationMetrics {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -405,7 +406,7 @@ func (a *OperationAccumulator) GetAndClear() []*domain.TableOperationMetrics {
 	return result
 }
 
-// makeKey creates a unique key for table + operation type
+// makeKey creates a unique key for table + operation type.
 func makeKey(tableID domain.TableIdentifier, opType domain.OperationType) string {
 	return tableID.String() + ":" + string(opType)
 }

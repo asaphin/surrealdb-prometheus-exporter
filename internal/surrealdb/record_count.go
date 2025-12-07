@@ -27,8 +27,11 @@ func NewRecordCountReader(conn ConnectionManager) (*recordCountReader, error) {
 	return &recordCountReader{conn: conn}, nil
 }
 
-// RecordCount retrieves record counts for the provided tables in parallel
-func (r *recordCountReader) RecordCount(ctx context.Context, tables []*domain.TableInfo) (*domain.RecordCountMetrics, error) {
+// RecordCount retrieves record counts for the provided tables in parallel.
+func (r *recordCountReader) RecordCount(
+	ctx context.Context,
+	tables []*domain.TableInfo,
+) (*domain.RecordCountMetrics, error) {
 	start := time.Now()
 
 	if len(tables) == 0 {
@@ -49,8 +52,11 @@ func (r *recordCountReader) RecordCount(ctx context.Context, tables []*domain.Ta
 	}, nil
 }
 
-// fetchRecordCountsParallel retrieves record counts for multiple tables in parallel
-func (r *recordCountReader) fetchRecordCountsParallel(ctx context.Context, tables []*domain.TableInfo) ([]*domain.TableRecordCount, error) {
+// fetchRecordCountsParallel retrieves record counts for multiple tables in parallel.
+func (r *recordCountReader) fetchRecordCountsParallel(
+	ctx context.Context,
+	tables []*domain.TableInfo,
+) ([]*domain.TableRecordCount, error) {
 	type countResult struct {
 		tableCount *domain.TableRecordCount
 		err        error
@@ -91,8 +97,11 @@ func (r *recordCountReader) fetchRecordCountsParallel(ctx context.Context, table
 	return tableCounts, nil
 }
 
-// fetchTableRecordCount retrieves the record count for a single table
-func (r *recordCountReader) fetchTableRecordCount(ctx context.Context, table *domain.TableInfo) (*domain.TableRecordCount, error) {
+// fetchTableRecordCount retrieves the record count for a single table.
+func (r *recordCountReader) fetchTableRecordCount(
+	ctx context.Context,
+	table *domain.TableInfo,
+) (*domain.TableRecordCount, error) {
 	db, err := r.conn.Get(ctx, table.Namespace, table.Database)
 	if err != nil {
 		return nil, fmt.Errorf("could not get DB connection for %s.%s.%s: %w",

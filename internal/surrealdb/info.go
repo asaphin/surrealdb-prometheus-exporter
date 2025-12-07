@@ -13,11 +13,11 @@ import (
 )
 
 type rootInfo struct {
-	Accesses   map[string]interface{} `json:"accesses"`
-	Namespaces map[string]interface{} `json:"namespaces"`
-	Nodes      map[string]interface{} `json:"nodes"`
-	System     systemInfo             `json:"system"`
-	Users      map[string]interface{} `json:"users"`
+	Accesses   map[string]any `json:"accesses"`
+	Namespaces map[string]any `json:"namespaces"`
+	Nodes      map[string]any `json:"nodes"`
+	System     systemInfo     `json:"system"`
+	Users      map[string]any `json:"users"`
 }
 
 type systemInfo struct {
@@ -31,29 +31,29 @@ type systemInfo struct {
 }
 
 type namespaceInfo struct {
-	Accesses  map[string]interface{} `json:"accesses"`
-	Databases map[string]interface{} `json:"databases"`
-	Users     map[string]interface{} `json:"users"`
+	Accesses  map[string]any `json:"accesses"`
+	Databases map[string]any `json:"databases"`
+	Users     map[string]any `json:"users"`
 }
 
 type databaseInfo struct {
-	Accesses  map[string]interface{} `json:"accesses"`
-	Analyzers map[string]interface{} `json:"analyzers"`
-	Apis      map[string]interface{} `json:"apis"`
-	Configs   map[string]interface{} `json:"configs"`
-	Functions map[string]interface{} `json:"functions"`
-	Models    map[string]interface{} `json:"models"`
-	Params    map[string]interface{} `json:"params"`
-	Tables    map[string]interface{} `json:"tables"`
-	Users     map[string]interface{} `json:"users"`
+	Accesses  map[string]any `json:"accesses"`
+	Analyzers map[string]any `json:"analyzers"`
+	Apis      map[string]any `json:"apis"`
+	Configs   map[string]any `json:"configs"`
+	Functions map[string]any `json:"functions"`
+	Models    map[string]any `json:"models"`
+	Params    map[string]any `json:"params"`
+	Tables    map[string]any `json:"tables"`
+	Users     map[string]any `json:"users"`
 }
 
 type tableInfo struct {
-	Events  map[string]interface{} `json:"events"`
-	Fields  map[string]interface{} `json:"fields"`
-	Indexes map[string]interface{} `json:"indexes"`
-	Lives   map[string]interface{} `json:"lives"`
-	Tables  map[string]interface{} `json:"tables"`
+	Events  map[string]any `json:"events"`
+	Fields  map[string]any `json:"fields"`
+	Indexes map[string]any `json:"indexes"`
+	Lives   map[string]any `json:"lives"`
+	Tables  map[string]any `json:"tables"`
 }
 
 type indexInfo struct {
@@ -80,7 +80,7 @@ func NewInfoReader(cfg Config, conn ConnectionManager) (*infoReader, error) {
 	return &infoReader{cfg: cfg, conn: conn}, nil
 }
 
-// Info retrieves complete hierarchical information about the SurrealDB instance
+// Info retrieves complete hierarchical information about the SurrealDB instance.
 func (r *infoReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error) {
 	start := time.Now()
 
@@ -123,7 +123,7 @@ func (r *infoReader) Info(ctx context.Context) (*domain.SurrealDBInfo, error) {
 	return result, nil
 }
 
-// fetchRootInfo retrieves root level information
+// fetchRootInfo retrieves root level information.
 func (r *infoReader) fetchRootInfo(ctx context.Context) (*rootInfo, error) {
 	db, err := r.conn.Get(ctx, "", "")
 	if err != nil {
@@ -147,8 +147,11 @@ func (r *infoReader) fetchRootInfo(ctx context.Context) (*rootInfo, error) {
 	return rootResult.Result, nil
 }
 
-// fetchNamespacesParallel retrieves multiple namespaces in parallel
-func (r *infoReader) fetchNamespacesParallel(ctx context.Context, namespaceNames []string) (map[string]*domain.NamespaceInfo, error) {
+// fetchNamespacesParallel retrieves multiple namespaces in parallel.
+func (r *infoReader) fetchNamespacesParallel(
+	ctx context.Context,
+	namespaceNames []string,
+) (map[string]*domain.NamespaceInfo, error) {
 	type nsResult struct {
 		name string
 		info *domain.NamespaceInfo
@@ -190,7 +193,7 @@ func (r *infoReader) fetchNamespacesParallel(ctx context.Context, namespaceNames
 	return namespaces, nil
 }
 
-// fetchNamespace retrieves information for a single namespace and its databases
+// fetchNamespace retrieves information for a single namespace and its databases.
 func (r *infoReader) fetchNamespace(ctx context.Context, namespaceName string) (*domain.NamespaceInfo, error) {
 	db, err := r.conn.Get(ctx, "", "")
 	if err != nil {
@@ -236,8 +239,12 @@ func (r *infoReader) fetchNamespace(ctx context.Context, namespaceName string) (
 	return nsInfo, nil
 }
 
-// fetchDatabasesParallel retrieves multiple databases in parallel
-func (r *infoReader) fetchDatabasesParallel(ctx context.Context, namespace string, databaseNames []string) (map[string]*domain.DatabaseInfo, error) {
+// fetchDatabasesParallel retrieves multiple databases in parallel.
+func (r *infoReader) fetchDatabasesParallel(
+	ctx context.Context,
+	namespace string,
+	databaseNames []string,
+) (map[string]*domain.DatabaseInfo, error) {
 	type dbResult struct {
 		name string
 		info *domain.DatabaseInfo
@@ -279,7 +286,7 @@ func (r *infoReader) fetchDatabasesParallel(ctx context.Context, namespace strin
 	return databases, nil
 }
 
-// fetchDatabase retrieves information for a single database and its tables
+// fetchDatabase retrieves information for a single database and its tables.
 func (r *infoReader) fetchDatabase(ctx context.Context, namespace, databaseName string) (*domain.DatabaseInfo, error) {
 	db, err := r.conn.Get(ctx, namespace, databaseName)
 	if err != nil {
@@ -334,8 +341,12 @@ func (r *infoReader) fetchDatabase(ctx context.Context, namespace, databaseName 
 	return dbInfo, nil
 }
 
-// fetchTablesParallel retrieves multiple tables in parallel
-func (r *infoReader) fetchTablesParallel(ctx context.Context, namespace, database string, tableNames []string) (map[string]*domain.TableInfo, error) {
+// fetchTablesParallel retrieves multiple tables in parallel.
+func (r *infoReader) fetchTablesParallel(
+	ctx context.Context,
+	namespace, database string,
+	tableNames []string,
+) (map[string]*domain.TableInfo, error) {
 	type tblResult struct {
 		name string
 		info *domain.TableInfo
@@ -377,7 +388,7 @@ func (r *infoReader) fetchTablesParallel(ctx context.Context, namespace, databas
 	return tables, nil
 }
 
-// fetchTable retrieves information for a single table and its indexes
+// fetchTable retrieves information for a single table and its indexes.
 func (r *infoReader) fetchTable(ctx context.Context, namespace, database, tableName string) (*domain.TableInfo, error) {
 	db, err := r.conn.Get(ctx, namespace, database)
 	if err != nil {
@@ -427,8 +438,12 @@ func (r *infoReader) fetchTable(ctx context.Context, namespace, database, tableN
 	return tblInfo, nil
 }
 
-// fetchIndexesParallel retrieves multiple indexes in parallel
-func (r *infoReader) fetchIndexesParallel(ctx context.Context, namespace, database, table string, indexNames []string) (map[string]*domain.IndexInfo, error) {
+// fetchIndexesParallel retrieves multiple indexes in parallel.
+func (r *infoReader) fetchIndexesParallel(
+	ctx context.Context,
+	namespace, database, table string,
+	indexNames []string,
+) (map[string]*domain.IndexInfo, error) {
 	type idxResult struct {
 		name string
 		info *domain.IndexInfo
@@ -470,8 +485,11 @@ func (r *infoReader) fetchIndexesParallel(ctx context.Context, namespace, databa
 	return indexes, nil
 }
 
-// fetchIndex retrieves information for a single index
-func (r *infoReader) fetchIndex(ctx context.Context, namespace, database, table, indexName string) (*domain.IndexInfo, error) {
+// fetchIndex retrieves information for a single index.
+func (r *infoReader) fetchIndex(
+	ctx context.Context,
+	namespace, database, table, indexName string,
+) (*domain.IndexInfo, error) {
 	db, err := r.conn.Get(ctx, namespace, database)
 	if err != nil {
 		return nil, fmt.Errorf("could not get DB connection: %w", err)

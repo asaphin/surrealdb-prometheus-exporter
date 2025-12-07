@@ -8,12 +8,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// RecordCountReader defines the interface for reading table record counts
+// RecordCountReader defines the interface for reading table record counts.
 type RecordCountReader interface {
 	RecordCount(ctx context.Context, tables []*domain.TableInfo) (*domain.RecordCountMetrics, error)
 }
 
-// recordCountCollector collects metrics about table record counts
+// recordCountCollector collects metrics about table record counts.
 type recordCountCollector struct {
 	reader RecordCountReader
 	filter TableFilter
@@ -24,7 +24,7 @@ type recordCountCollector struct {
 	scrapeDuration   *prometheus.Desc
 }
 
-// NewRecordCountCollector creates a new record count collector
+// NewRecordCountCollector creates a new record count collector.
 func NewRecordCountCollector(reader RecordCountReader, filter TableFilter) prometheus.Collector {
 	return &recordCountCollector{
 		reader:         reader,
@@ -45,13 +45,13 @@ func NewRecordCountCollector(reader RecordCountReader, filter TableFilter) prome
 	}
 }
 
-// Describe implements prometheus.Collector
+// Describe implements prometheus.Collector.
 func (c *recordCountCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.tableRecordCount
 	ch <- c.scrapeDuration
 }
 
-// Collect implements prometheus.Collector
+// Collect implements prometheus.Collector.
 func (c *recordCountCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 

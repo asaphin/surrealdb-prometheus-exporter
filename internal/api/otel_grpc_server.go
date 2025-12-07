@@ -9,21 +9,24 @@ import (
 	"google.golang.org/grpc"
 )
 
-// OTELGRPCServer implements the OTLP metrics service over gRPC
+// OTELGRPCServer implements the OTLP metrics service over gRPC.
 type OTELGRPCServer struct {
 	pmetricotlp.UnimplementedGRPCServer
 	processor processor.Processor
 }
 
-// NewOTELGRPCServer creates a new gRPC server for OTLP metrics
+// NewOTELGRPCServer creates a new gRPC server for OTLP metrics.
 func NewOTELGRPCServer(processor processor.Processor) *OTELGRPCServer {
 	return &OTELGRPCServer{
 		processor: processor,
 	}
 }
 
-// Export handles the gRPC export request for metrics
-func (s *OTELGRPCServer) Export(ctx context.Context, req pmetricotlp.ExportRequest) (pmetricotlp.ExportResponse, error) {
+// Export handles the gRPC export request for metrics.
+func (s *OTELGRPCServer) Export(
+	ctx context.Context,
+	req pmetricotlp.ExportRequest,
+) (pmetricotlp.ExportResponse, error) {
 	metrics := req.Metrics()
 
 	batch := ConvertPmetricToDomain(metrics)
