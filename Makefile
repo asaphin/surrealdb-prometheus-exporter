@@ -92,14 +92,18 @@ docker-dev: docker-stop docker-build docker-run-with-config docker-logs
 docker-clean: docker-stop
 	docker rmi $(DOCKER_IMAGE):$(DOCKER_TAG) || true
 
+# Run linter
 lint:
 	golangci-lint run
 
+# Autofix linter issues
 lint-fix:
 	golangci-lint run --fix
 
+# Run linter in strict mode
 lint-strict:
 	golangci-lint run --max-issues-per-linter=0 --max-same-issues=0
 
+# Autofix linter issues in strict mode
 lint-strict-fix:
 	golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 --fix
